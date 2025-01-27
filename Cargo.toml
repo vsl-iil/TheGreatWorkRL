@@ -1,0 +1,10 @@
+[package]
+name = "sevendrl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8.5"
+rltk = "0.8.7"
+specs = "0.20.0"
+specs-derive = "0.4.1"
