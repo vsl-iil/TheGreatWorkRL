@@ -8,7 +8,6 @@ use map::*;
 mod player;
 use player::*;
 mod rect;
-use rect::*;
 
 struct State {
     ecs: World,
@@ -21,8 +20,8 @@ impl GameState for State {
         self.run_systems();
         player_input(self, ctx);
 
-        let map = self.ecs.fetch::<Vec<TileType>>();
-        draw_map(&map, ctx);
+        //let map = self.ecs.fetch::<Vec<TileType>>();
+        draw_map(&self.ecs, ctx);
 
         let positions = self.ecs.read_storage::<Position>();
         let renderables = self.ecs.read_storage::<Renderable>();
@@ -54,11 +53,13 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<Player>();
 
-    gs.ecs.insert(new_map_rooms_and_corridors());
+    let map = Map::new_map_rooms_and_corridors(80, 50);
+    let (player_x, player_y) = map.rooms[0].center();
+    gs.ecs.insert(map);
 
     gs.ecs
         .create_entity()
-        .with(Position { x: 40, y: 25 })
+        .with(Position { x: player_x, y: player_y })
         .with(Renderable {
             glyph: rltk::to_cp437('@'),
             fg: RGB::named(rltk::YELLOW),
