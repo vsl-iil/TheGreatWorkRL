@@ -1,5 +1,6 @@
-use rltk::{RGB, Rltk, RandomNumberGenerator};
+use rltk::{Algorithm2D, BaseMap, FontCharType, RandomNumberGenerator, Rltk, RGB};
 use specs::World;
+
 use super::rect::*;
 use std::cmp::{min, max};
 
@@ -13,7 +14,9 @@ pub struct Map {
     pub tiles: Vec<TileType>,
     pub rooms: Vec<Rect>,
     pub width: i32,
-    pub height: i32
+    pub height: i32,
+    pub revealed_tiles: Vec<bool>,
+    pub visible_tiles: Vec<bool>,
 }
 
 impl Map {
@@ -26,7 +29,9 @@ impl Map {
             tiles: vec![TileType::Wall; (width*height) as usize],
             rooms: vec![],
             width,
-            height
+            height,
+            revealed_tiles: vec![false; (width*height) as usize],
+            visible_tiles: vec![false; (width*height) as usize],
         };
 
         let mut rooms: Vec<Rect> = vec![];
@@ -103,18 +108,27 @@ impl Map {
 }
 
 pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
+    let map = ecs.fetch::<Map>();
+
     let mut x = 0;
     let mut y = 0;
 
-    let map = ecs.fetch::<Map>();
-    for tile in map.tiles.iter() {
-        match tile {
-            TileType::Floor => {
-                ctx.set(x, y, RGB::from_f32(0.3, 0.3, 0.3), RGB::from_f32(0., 0., 0.), rltk::to_cp437('.'));
+    for (idx, tile) in map.tiles.iter().enumerate() {
+        if map.revealed_tiles[idx] {
+            let glyph: FontCharType;
+            let mut fg: RGB;
+            match tile {
+                TileType::Floor => {
+                    glyph = rltk::to_cp437('.');
+                    fg = RGB::from_f32(0.3, 0.3, 0.3);
+                }
+                TileType::Wall => {
+                    glyph = rltk::to_cp437('#');
+                    fg = RGB::from_f32(0.8, 0.8, 0.95);
+                }
             }
-            TileType::Wall => {
-                ctx.set(x, y, RGB::from_f32(0.8, 0.8, 0.8), RGB::from_f32(0., 0., 0.), rltk::to_cp437('#'));
-            }
+            if !map.visible_tiles[idx] { fg = fg.to_greyscale() }
+            ctx.set(x, y, fg, RGB::from_f32(0., 0., 0.), glyph);
         }
 
         x += 1;
@@ -122,5 +136,17 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
             x = 0;
             y += 1;
         }
+    }
+}
+
+impl Algorithm2D for Map {
+    fn dimensions(&self) -> rltk::Point {
+        rltk::Point::new(self.width, self.height)
+    }
+}
+
+impl BaseMap for Map {
+    fn is_opaque(&self, idx: usize) -> bool {
+        self.tiles[idx as usize] == TileType::Wall
     }
 }

@@ -8,6 +8,8 @@ use map::*;
 mod player;
 use player::*;
 mod rect;
+mod visibility_system;
+use visibility_system::VisibilitySystem;
 
 struct State {
     ecs: World,
@@ -34,6 +36,8 @@ impl GameState for State {
 
 impl State {
     fn run_systems(&mut self) {
+        let mut vis = VisibilitySystem {};
+        vis.run_now(&self.ecs);
         self.ecs.maintain();
     }
 }
@@ -45,12 +49,15 @@ fn main() -> rltk::BError {
         .with_title("Roguelike Tutorial")
         .build()?;
 
+    // context.with_post_scanlines(false);
+
     let mut gs = State {
         ecs: World::new()
     };
 
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
+    gs.ecs.register::<Viewshed>();
     gs.ecs.register::<Player>();
 
     let map = Map::new_map_rooms_and_corridors(80, 50);
@@ -66,6 +73,7 @@ fn main() -> rltk::BError {
             bg: RGB::named(rltk::BLACK),
         })
         .with(Player {})
+        .with(Viewshed { visible_tiles: vec![], range: 8, dirty: true })
         .build();
 
     rltk::main_loop(context, gs)
