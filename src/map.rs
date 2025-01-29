@@ -51,7 +51,7 @@ impl Map {
 
             let mut room_ok = true;
             for other_room in rooms.iter() {
-                room_ok = room_ok & !other_room.intersect(&new_room);
+                room_ok &= !other_room.intersect(&new_room);
 
             }
 
@@ -92,7 +92,7 @@ impl Map {
         for x in min(x1, x2)..=max(x1, x2) {
             let idx = self.xy_idx(x, y);
             if idx > 0 && idx < (self.width*self.height) as usize {
-                self.tiles[idx as usize] = TileType::Floor;
+                self.tiles[idx] = TileType::Floor;
             }
         }
     }
@@ -101,7 +101,7 @@ impl Map {
         for y in min(y1, y2)..=max(y1, y2) {
             let idx = self.xy_idx(x, y);
             if idx > 0 && idx < (self.width*self.height) as usize {
-                self.tiles[idx as usize] = TileType::Floor;
+                self.tiles[idx] = TileType::Floor;
             }
         }
     }
@@ -147,6 +147,6 @@ impl Algorithm2D for Map {
 
 impl BaseMap for Map {
     fn is_opaque(&self, idx: usize) -> bool {
-        self.tiles[idx as usize] == TileType::Wall
+        self.tiles[idx] == TileType::Wall
     }
 }
