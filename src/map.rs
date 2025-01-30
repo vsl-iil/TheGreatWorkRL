@@ -127,7 +127,15 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
                     fg = RGB::from_f32(0.8, 0.8, 0.95);
                 }
             }
-            if !map.visible_tiles[idx] { fg = fg.to_greyscale() }
+            if !map.visible_tiles[idx] { 
+                let mut darkest = f32::min(fg.b, f32::min(fg.g, fg.r));
+                if darkest > 0.3 {
+                    darkest -= 0.3;
+                }
+                fg.b = darkest;
+                fg.g = darkest;
+                fg.r = darkest;
+            }
             ctx.set(x, y, fg, RGB::from_f32(0., 0., 0.), glyph);
         }
 
