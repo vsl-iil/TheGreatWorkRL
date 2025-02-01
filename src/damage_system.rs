@@ -34,7 +34,7 @@ pub fn clean_up_dead(ecs: &mut World) {
                 match player {
                     None => { 
                         let name = names.get(entity).unwrap_or(&Name { name: "Unnamed".to_string() }).name.clone();
-                        console::log(&format!("{} dies!", &name));
+                        console::log(format!("{} dies!", &name));
                         dead.push(entity);
                     },
                     Some(_p) => console::log("You are dead!"),

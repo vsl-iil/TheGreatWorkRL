@@ -22,9 +22,9 @@ impl<'a> System<'a> for MeleeCombatSystem {
                     let damage = i32::max(0, stats.power - target_stats.defence);
 
                     if damage == 0 {
-                        console::log(&format!("{} is unable to hurt {}", &name.name, &target_name.name));
+                        console::log(format!("{} is unable to hurt {}", &name.name, &target_name.name));
                     } else {
-                        console::log(&format!("{} hurts {} for {} hp", &name.name, &target_name.name, damage));
+                        console::log(format!("{} hurts {} for {} hp", &name.name, &target_name.name, damage));
                         SufferDamage::new_damage(&mut inflict_dmg, wants_melee.target, damage);
                     }
                 }

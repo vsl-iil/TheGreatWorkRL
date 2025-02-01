@@ -1,8 +1,8 @@
-use rltk::{console, Point};
+use rltk::Point;
 use specs::{ReadStorage, System};
 use specs::prelude::*;
 
-use crate::components::{Monster, Name, Position, Viewshed, WantsToMelee};
+use crate::components::{Monster, Position, Viewshed, WantsToMelee};
 use crate::map::Map;
 use crate::RunState;
 
@@ -25,7 +25,7 @@ impl<'a> System<'a> for MonsterAI {
 
         if *runstate != RunState::MonsterTurn { return; }
 
-        for (entity, mut viewshed, _monster, mut pos) in (&entities, &mut viewshed, &monster, &mut position).join() {
+        for (entity, viewshed, _monster, pos) in (&entities, &mut viewshed, &monster, &mut position).join() {
             if viewshed.visible_tiles.contains(&*player_pos) {
                 // AI
                 let distance = rltk::DistanceAlg::Pythagoras.distance2d(Point::new(pos.x, pos.y), *player_pos);
@@ -36,7 +36,7 @@ impl<'a> System<'a> for MonsterAI {
                     let path = rltk::a_star_search(
                         map.xy_idx(pos.x, pos.y) as i32,
                         map.xy_idx(player_pos.x, player_pos.y) as i32,
-                        &mut *map
+                        &*map
                     );
                     if path.success && path.steps.len() > 1 {
                         let mut idx = map.xy_idx(pos.x, pos.y);

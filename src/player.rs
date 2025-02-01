@@ -1,15 +1,15 @@
-use rltk::{console, Point, Rltk, VirtualKeyCode};
+use rltk::{Point, Rltk, VirtualKeyCode};
 use specs::prelude::*;
 use crate::{components::{CombatStats, Viewshed, WantsToMelee}, RunState};
 
-use super::{Position, Player, TileType, Map, State};
+use super::{Position, Player, Map, State};
 use std::cmp::{min, max};
 
 fn try_move_player(dx: i32, dy: i32, ecs: &mut World) {
     let mut positions = ecs.write_storage::<Position>();
     let mut players = ecs.write_storage::<Player>();
     let mut viewsheds = ecs.write_storage::<Viewshed>();
-    let mut combat_stats = ecs.write_storage::<CombatStats>();
+    let combat_stats = ecs.read_storage::<CombatStats>();
     let mut wants_to_melee = ecs.write_storage::<WantsToMelee>();
 
     let entities = ecs.entities();
@@ -63,5 +63,5 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
         }
     }
 
-    return RunState::PlayerTurn;
+    RunState::PlayerTurn
 }
