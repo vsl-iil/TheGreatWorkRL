@@ -1,4 +1,5 @@
 use damage_system::DamageSystem;
+use gui::draw_ui;
 use map_indexing_system::MapIndexingSystem;
 use melee_combat_system::MeleeCombatSystem;
 use monster_ai_system::MonsterAI;
@@ -18,6 +19,8 @@ mod monster_ai_system;
 mod map_indexing_system;
 mod melee_combat_system;
 mod damage_system;
+mod gui;
+mod gamelog;
 
 pub struct State {
     pub ecs: World,
@@ -66,6 +69,8 @@ impl GameState for State {
             let idx = map.xy_idx(pos.x, pos.y);
             if map.visible_tiles[idx] { ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph) }
         }
+
+        draw_ui(&self.ecs, ctx);
     }
 }
 
@@ -97,11 +102,11 @@ pub enum RunState {
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
-    let context = RltkBuilder::simple80x50()
+    let mut context = RltkBuilder::simple80x50()
         .with_title("Roguelike Tutorial")
         .build()?;
 
-    // context.with_post_scanlines(false);
+    context.with_post_scanlines(false);
 
     let mut gs = State {
         ecs: World::new(),
@@ -120,7 +125,7 @@ fn main() -> rltk::BError {
 
     let mut rng = rltk::RandomNumberGenerator::new();
 
-    let map = Map::new_map_rooms_and_corridors(80, 50);
+    let map = Map::new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
     
     for (i, room) in map.rooms.iter().skip(1).enumerate() {
@@ -146,7 +151,7 @@ fn main() -> rltk::BError {
             })
             .with(Viewshed { visible_tiles: vec![], range: 8, dirty: true })
             .with(Monster {})
-            .with(Name { name: format!("{name} #{i}") })
+            .with(Name { name: format!("{} #{}", name, i+1) })
             .with(BlocksTile {})
             .with(CombatStats {
                 max_hp: 10,
@@ -158,6 +163,7 @@ fn main() -> rltk::BError {
     }
     gs.ecs.insert(Point::new(player_x, player_y));
     gs.ecs.insert(map);
+    gs.ecs.insert(gamelog::GameLog { entries: vec!["Welcome to the dungeon of doom!".to_string()] });
 
     let player_entity = gs.ecs
         .create_entity()

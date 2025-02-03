@@ -4,6 +4,10 @@ use specs::{Entity, World};
 use super::rect::*;
 use std::cmp::{min, max};
 
+pub const MAPWIDTH:  usize = 80;
+pub const MAPHEIGHT: usize = 43;
+pub const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
+
 #[derive(PartialEq, Clone, Copy)]
 pub enum TileType {
     Wall,
@@ -23,19 +27,19 @@ pub struct Map {
 
 impl Map {
     pub fn xy_idx(&self, x: i32, y: i32) -> usize {
-        (y as usize * self.width as usize) + x as usize
+        (y as usize * MAPWIDTH) + x as usize
     }
 
-    pub fn new_map_rooms_and_corridors(width: i32, height: i32) -> Map {
+    pub fn new_map_rooms_and_corridors() -> Map {
         let mut map = Map {
-            tiles: vec![TileType::Wall; (width*height) as usize],
+            tiles: vec![TileType::Wall; MAPCOUNT],
             rooms: vec![],
-            width,
-            height,
-            revealed_tiles: vec![false; (width*height) as usize],
-            visible_tiles: vec![false; (width*height) as usize],
-            blocked: vec![false; (width*height) as usize],
-            tile_content: vec![vec![]; (width*height) as usize]
+            width: MAPWIDTH as i32,
+            height: MAPHEIGHT as i32,
+            revealed_tiles: vec![false; MAPCOUNT],
+            visible_tiles: vec![false; MAPCOUNT],
+            blocked: vec![false; MAPCOUNT],
+            tile_content: vec![vec![]; MAPCOUNT]
         };
 
         let mut rooms: Vec<Rect> = vec![];
@@ -48,8 +52,8 @@ impl Map {
         for _ in 0..MAX_ROOMS {
             let w = rng.range(MIN_SIZE, MAX_SIZE);
             let h = rng.range(MIN_SIZE, MAX_SIZE);
-            let x = rng.roll_dice(1, width - w - 1) - 1;
-            let y = rng.roll_dice(1, height - h - 1) - 1;
+            let x = rng.roll_dice(1, MAPWIDTH as i32 - w - 1) - 1;
+            let y = rng.roll_dice(1, MAPHEIGHT as i32 - h - 1) - 1;
 
             let new_room = Rect::new(x, y, w, h);
 
@@ -95,7 +99,7 @@ impl Map {
     pub fn apply_horizontal_tunnel(&mut self, x1: i32, x2: i32, y: i32) {
         for x in min(x1, x2)..=max(x1, x2) {
             let idx = self.xy_idx(x, y);
-            if idx > 0 && idx < (self.width*self.height) as usize {
+            if idx > 0 && idx < MAPCOUNT {
                 self.tiles[idx] = TileType::Floor;
             }
         }
@@ -104,15 +108,15 @@ impl Map {
     pub fn apply_vertical_tunnel(&mut self, y1: i32, y2: i32, x: i32) {
         for y in min(y1, y2)..=max(y1, y2) {
             let idx = self.xy_idx(x, y);
-            if idx > 0 && idx < (self.width*self.height) as usize {
+            if idx > 0 && idx < MAPCOUNT {
                 self.tiles[idx] = TileType::Floor;
             }
         }
     }
 
     fn is_exit_valid(&self, x: i32, y: i32) -> bool {
-        if x < 1 || x > self.width-1 
-        || y < 1 || y > self.height-1 {
+        if x < 1 || x > (MAPWIDTH-1) as i32 
+        || y < 1 || y > (MAPHEIGHT-1) as i32 {
             return false;
         }
         let idx = self.xy_idx(x, y);
@@ -175,7 +179,7 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
 
 impl Algorithm2D for Map {
     fn dimensions(&self) -> rltk::Point {
-        rltk::Point::new(self.width, self.height)
+        rltk::Point::new(MAPWIDTH, MAPHEIGHT)
     }
 }
 
@@ -186,9 +190,9 @@ impl BaseMap for Map {
 
     fn get_available_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {
         let mut exits = rltk::SmallVec::new();
-        let x = idx as i32 % self.width;
-        let y = idx as i32 / self.width;
-        let w = self.width as usize;
+        let x = idx as i32 % MAPWIDTH as i32;
+        let y = idx as i32 / MAPWIDTH as i32;
+        let w = MAPWIDTH;
 
         // Cardinal directions
         if self.is_exit_valid(x-1, y) { exits.push((idx-1, 1.0));}      // W
@@ -204,7 +208,7 @@ impl BaseMap for Map {
     }
 
     fn get_pathing_distance(&self, idx1: usize, idx2: usize) -> f32 {
-        let w = self.width as usize;
+        let w = MAPWIDTH;
         let p1 = Point::new(idx1 % w, idx1 / w);
         let p2 = Point::new(idx2 % w, idx2 / w);
 
