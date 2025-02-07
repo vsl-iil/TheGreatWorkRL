@@ -1,7 +1,7 @@
 use rltk::{Point, Rltk, RGB};
 use specs::prelude::*;
 
-use crate::{components::{CombatStats, Name, Player, Position}, gamelog::GameLog, map::{Map, MAPHEIGHT, MAPWIDTH}};
+use crate::{components::{CombatStats, InBackpack, Name, Player, Position}, gamelog::GameLog, map::{Map, MAPWIDTH}, State};
 
 pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
     ctx.draw_box(0, 43, MAPWIDTH-1, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
@@ -56,7 +56,7 @@ fn draw_tooltip(ecs: &World, ctx: &mut Rltk) {
             for s in tooltip.iter() {
                 ctx.print_color(left_x, y, RGB::named(rltk::WHITE), RGB::named(rltk::DARKBLUE), s);
                 let padding = (width - s.len() as i32) - 1;
-                for i in 0..padding {
+                for _i in 0..padding {
                     ctx.print_color(arrow_pos.x - 1, y, RGB::named(rltk::WHITE), RGB::named(rltk::DARKBLUE), " ".to_string());
                 }
                 y += 1;
@@ -78,5 +78,96 @@ fn draw_tooltip(ecs: &World, ctx: &mut Rltk) {
             ctx.print_color(arrow_pos.x, arrow_pos.y, RGB::named(rltk::WHITE), RGB::named(rltk::DARKBLUE), "<-".to_string());
         }
 
+    }
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum ItemMenuResult {
+    Cancel,
+    NoResponse,
+    Selected(Entity)
+}
+
+pub fn show_inventory(gs: &mut State, ctx: &mut Rltk) -> ItemMenuResult {
+    let player_entity = gs.ecs.fetch::<Entity>();
+    let names = gs.ecs.read_storage::<Name>();
+    let backpack = gs.ecs.read_storage::<InBackpack>();
+    let entities = gs.ecs.entities();
+
+    let inventory = (&backpack, &names).join().filter(|item| item.0.owner == *player_entity);
+    let count = inventory.count() as i32;
+
+    let mut y = 25 - (count / 2);
+    ctx.draw_box(15, y-2, 31, count+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    ctx.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Inventory");
+    ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
+
+    let mut usable: Vec<Entity> = vec![];
+    let mut j = 0;
+    for (entity, _pack, name) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity) {
+        ctx.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
+        ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
+        ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
+
+        ctx.print(21, y, &name.name.to_string());
+        usable.push(entity);
+        y += 1;
+        j += 1;
+    }
+
+    match ctx.key {
+        None => ItemMenuResult::NoResponse,
+        Some(key) => match key {
+            rltk::VirtualKeyCode::Escape => ItemMenuResult::Cancel,
+            _ => {
+                let selection = rltk::letter_to_option(key);
+                if selection > -1 && selection < count {
+                    return ItemMenuResult::Selected(usable[selection as usize]);
+                }
+                ItemMenuResult::NoResponse
+            }
+        }
+    }
+}
+
+pub fn drop_menu(gs: &mut State, ctx: &mut Rltk) -> ItemMenuResult {
+    let player_entity = gs.ecs.fetch::<Entity>();
+    let names = gs.ecs.read_storage::<Name>();
+    let backpack = gs.ecs.read_storage::<InBackpack>();
+    let entities = gs.ecs.entities();
+
+    let inventory = (&backpack, &names).join().filter(|item| item.0.owner == *player_entity);
+    let count = inventory.count() as i32;
+
+    let mut y = 25 - (count / 2);
+    ctx.draw_box(15, y-2, 31, count+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    ctx.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Drop which item?");
+    ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
+
+    let mut droppable: Vec<Entity> = vec![];
+    let mut j = 0;
+    for (entity, _pack, name) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity) {
+        ctx.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
+        ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
+        ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
+
+        ctx.print(21, y, &name.name.to_string());
+        droppable.push(entity);
+        y += 1;
+        j += 1;
+    }
+
+    match ctx.key {
+        None => ItemMenuResult::NoResponse,
+        Some(key) => match key {
+            rltk::VirtualKeyCode::Escape => ItemMenuResult::Cancel,
+            _ => {
+                let selection = rltk::letter_to_option(key);
+                if selection > -1 && selection < count {
+                    return ItemMenuResult::Selected(droppable[selection as usize]);
+                }
+                ItemMenuResult::NoResponse
+            }
+        }
     }
 }

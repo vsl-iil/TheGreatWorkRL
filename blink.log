@@ -1,0 +1,40 @@
+I2025-02-06T23:43:25.685070:blink/blinkenlights.c:3286:9039 Tui
+I2025-02-06T23:43:25.685389:blink/blinkenlights.c:953:9039 loaded program target/debug/sevendrl
+110000000000-110000000fff  4096 100% r   /lib64/ld-linux-x86-64.so.2
+110000001000-11000002bfff  172k   3% rx  /lib64/ld-linux-x86-64.so.2
+11000002c000-110000035fff   40k  10% r   /lib64/ld-linux-x86-64.so.2
+110000036000-110000039fff   16k  25% rw  /lib64/ld-linux-x86-64.so.2
+110001000000-110001269fff 2472k   1% r   target/debug/sevendrl
+11000126a000-110001891fff 6304k   1% rx  target/debug/sevendrl
+110001892000-110001904fff  460k   2% rw  target/debug/sevendrl
+4fffff800000-4fffffffffff 8192k   1% rw  [stack]
+I2025-02-06T23:43:25.759504:blink/blinkenlights.c:773:9039 TuiRejuvinate
+I2025-02-06T23:43:27.995911:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:43:35.320104:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:43:36.404843:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:43:37.963388:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:43:44.615977:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:43:45.926619:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:44:14.940700:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:44:16.825570:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:47:20.777866:blink/blinkenlights.c:3347:9039 TUI INT
+I2025-02-06T23:47:21.783420:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:47:27.126550:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:47:45.227666:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:47:50.961375:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:47:57.734698:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:48:00.923352:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:48:08.140532:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:48:09.459397:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:48:17.636844:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:48:20.242965:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:48:26.950231:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:49:06.063635:blink/blinkenlights.c:3347:9039 TUI INT
+I2025-02-06T23:49:07.069333:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:49:07.089055:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:49:07.089255:blink/blinkenlights.c:3347:9039 TUI INT
+I2025-02-06T23:49:08.097528:blink/blinkenlights.c:3092:9039 ReadKeyboard interrupted
+I2025-02-06T23:49:08.121820:blink/blinkenlights.c:3365:9039 TUI EXIT
+I2025-02-06T23:49:08.122078:blink/blinkenlights.c:842:9039 TuiCleanup
+I2025-02-06T23:49:08.122278:blink/blinkenlights.c:834:9039 TtyRestore
+I2025-02-06T23:49:08.162254:blink/blinkenlights.c:834:0 TtyRestore

@@ -1,4 +1,3 @@
-use rltk::console;
 use specs::prelude::*;
 
 use crate::{components::{CombatStats, Name, Player, SufferDamage}, gamelog::GameLog};

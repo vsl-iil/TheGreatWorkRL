@@ -1,6 +1,6 @@
 use rltk::{Point, Rltk, VirtualKeyCode};
 use specs::prelude::*;
-use crate::{components::{CombatStats, Viewshed, WantsToMelee}, RunState};
+use crate::{components::{CombatStats, Item, Viewshed, WantsToMelee, WantsToPickupItem}, gamelog::GameLog, RunState};
 
 use super::{Position, Player, Map, State};
 use std::cmp::{min, max};
@@ -59,9 +59,40 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
                 => try_move_player(-1, 1, &mut gs.ecs),
             VirtualKeyCode::Numpad3 
                 => try_move_player(1, 1, &mut gs.ecs),
+            
+            VirtualKeyCode::G | VirtualKeyCode::Period 
+                => get_item(&mut gs.ecs),
+            VirtualKeyCode::I
+                => return RunState::ShowInventory,
+            VirtualKeyCode::D
+                => return RunState::ShowDropItem,
             _ => { return RunState::AwaitingInput }
         }
     }
 
     RunState::PlayerTurn
+}
+
+fn get_item(ecs: &mut World) {
+    let player_pos = ecs.fetch::<Point>();
+    let player_entity = ecs.fetch::<Entity>();
+    let entities = ecs.entities();
+    let items = ecs.read_storage::<Item>();
+    let positions = ecs.read_storage::<Position>();
+    let mut gamelog = ecs.fetch_mut::<GameLog>();
+
+    let mut target_item: Option<Entity> = None;
+    for (item_entity, _item, pos) in (&entities, &items, &positions).join() {
+        if pos.x == player_pos.x && pos.y == player_pos.y {
+            target_item = Some(item_entity);
+        }
+    }
+
+    match target_item {
+        None => gamelog.entries.push("There's nothing to pick up.".to_string()),
+        Some(item) => {
+            let mut pickup = ecs.write_storage::<WantsToPickupItem>();
+            pickup.insert(item, WantsToPickupItem { collected_by: *player_entity, item }).expect("Unable to insert want to pickup");
+        }
+    }
 }
