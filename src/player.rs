@@ -96,3 +96,33 @@ fn get_item(ecs: &mut World) {
         }
     }
 }
+
+pub enum CheatMenuResult {
+    UserInput(String),
+    InputDone,
+    NoResponse,
+} 
+
+#[cfg(debug_assertions)]
+fn cheat_input(ctx: &mut Rltk, input: String) -> CheatMenuResult {
+    let mut input = input;
+    match ctx.key {
+        None => CheatMenuResult::NoResponse,
+        Some(key)
+            => {
+                match key {
+                    rltk::VirtualKeyCode::Return => CheatMenuResult::InputDone,
+                    _ => {
+                        let letter = char::from_u32(rltk::letter_to_option(key) as u32 + 41);
+                        if let Some(ch) = letter {
+                            input.push(ch);
+                            CheatMenuResult::UserInput(input)
+                        } else {
+                            CheatMenuResult::NoResponse
+                        }
+
+                    }
+                }
+            }
+    }
+}

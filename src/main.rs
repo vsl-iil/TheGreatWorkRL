@@ -1,6 +1,6 @@
 use damage_system::DamageSystem;
 use gui::draw_ui;
-use inventory_system::{InventorySystem, ItemDropSystem, PotionUseSystem};
+use inventory_system::{InventorySystem, ItemDropSystem, ItemUseSystem};
 use map_indexing_system::MapIndexingSystem;
 use melee_combat_system::MeleeCombatSystem;
 use monster_ai_system::MonsterAI;
@@ -62,30 +62,41 @@ impl GameState for State {
             }
             RunState::ShowInventory => {
                 match gui::show_inventory(self, ctx) {
-                    gui::ItemMenuResult::Selected(item)
-                        => {
-                            let mut intent = self.ecs.write_storage::<WantsToDrinkPotion>();
-                            intent.insert(*self.ecs.fetch::<Entity>(), WantsToDrinkPotion { potion: item }).expect("Unable to insert want to drink");
-                            newrunstate = RunState::PlayerTurn;
-                        }
-                    gui::ItemMenuResult::Cancel 
+                    (gui::ItemMenuResult::Cancel, _) 
                         => newrunstate = RunState::AwaitingInput,
-                    gui::ItemMenuResult::NoResponse => {}
+                    (gui::ItemMenuResult::NoResponse, _) => {}
+                    (gui::ItemMenuResult::Selected, item)
+                        => {
+                            let item = item.unwrap();
+                            let is_ranged = self.ecs.read_storage::<Ranged>();
+                            if let Some(item_ranged) = is_ranged.get(item) {
+                                newrunstate = RunState::ShowTargeting { range: item_ranged.range, item }
+                            } else {
+                                let mut intent = self.ecs.write_storage::<WantsToUseItem>();
+                                intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem { item }).expect("Unable to insert want to use");
+                                newrunstate = RunState::PlayerTurn;
+                            }
+                        }
                 }
             }
             RunState::ShowDropItem => {
                 match gui::drop_menu(self, ctx) {
-                    gui::ItemMenuResult::Selected(item) 
+                    (gui::ItemMenuResult::Selected, item) 
                         => {
+                            let item = item.unwrap();
                             let mut intent = self.ecs.write_storage::<WantsToDropItem>();
                             intent.insert(*self.ecs.fetch::<Entity>(), WantsToDropItem { item }).expect("Unable to insert drop intent");
                             newrunstate = RunState::PlayerTurn;
                         }
-                    gui::ItemMenuResult::Cancel
+                    (gui::ItemMenuResult::Cancel, _)
                         => newrunstate = RunState::AwaitingInput,
-                    gui::ItemMenuResult::NoResponse => {}
+                    (gui::ItemMenuResult::NoResponse, _) => {}
                 }
             }
+            RunState::ShowTargeting { range, item }
+                => {
+                    let target = gui::ranged_target(self, ctx, range);
+                }
         }
 
         {
@@ -124,8 +135,8 @@ impl State {
         damage.run_now(&self.ecs);
         let mut inventory = InventorySystem {};
         inventory.run_now(&self.ecs);
-        let mut potion = PotionUseSystem {};
-        potion.run_now(&self.ecs);
+        let mut itemuse = ItemUseSystem {};
+        itemuse.run_now(&self.ecs);
         let mut drop = ItemDropSystem {};
         drop.run_now(&self.ecs);
 
@@ -140,7 +151,8 @@ pub enum RunState {
     PlayerTurn,
     MonsterTurn,
     ShowInventory,
-    ShowDropItem
+    ShowDropItem,
+    ShowTargeting{ range: i32, item: Entity }
 }
 
 
@@ -167,11 +179,14 @@ fn main() -> rltk::BError {
     gs.ecs.register::<WantsToMelee>();
     gs.ecs.register::<SufferDamage>();
     gs.ecs.register::<Item>();
-    gs.ecs.register::<Potion>();
+    gs.ecs.register::<ProvidesHealing>();
+    gs.ecs.register::<Consumable>();
     gs.ecs.register::<WantsToPickupItem>();
     gs.ecs.register::<InBackpack>();
-    gs.ecs.register::<WantsToDrinkPotion>();
+    gs.ecs.register::<WantsToUseItem>();
     gs.ecs.register::<WantsToDropItem>();
+    gs.ecs.register::<Ranged>();
+    gs.ecs.register::<InflictsDamage>();
 
     let map = Map::new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();

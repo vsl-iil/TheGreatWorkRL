@@ -85,10 +85,10 @@ fn draw_tooltip(ecs: &World, ctx: &mut Rltk) {
 pub enum ItemMenuResult {
     Cancel,
     NoResponse,
-    Selected(Entity)
+    Selected
 }
 
-pub fn show_inventory(gs: &mut State, ctx: &mut Rltk) -> ItemMenuResult {
+pub fn show_inventory(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Entity>) {
     let player_entity = gs.ecs.fetch::<Entity>();
     let names = gs.ecs.read_storage::<Name>();
     let backpack = gs.ecs.read_storage::<InBackpack>();
@@ -116,21 +116,21 @@ pub fn show_inventory(gs: &mut State, ctx: &mut Rltk) -> ItemMenuResult {
     }
 
     match ctx.key {
-        None => ItemMenuResult::NoResponse,
+        None => (ItemMenuResult::NoResponse, None),
         Some(key) => match key {
-            rltk::VirtualKeyCode::Escape => ItemMenuResult::Cancel,
+            rltk::VirtualKeyCode::Escape => (ItemMenuResult::Cancel, None),
             _ => {
                 let selection = rltk::letter_to_option(key);
                 if selection > -1 && selection < count {
-                    return ItemMenuResult::Selected(usable[selection as usize]);
+                    return (ItemMenuResult::Selected, Some(usable[selection as usize]));
                 }
-                ItemMenuResult::NoResponse
+                (ItemMenuResult::NoResponse, None)
             }
         }
     }
 }
 
-pub fn drop_menu(gs: &mut State, ctx: &mut Rltk) -> ItemMenuResult {
+pub fn drop_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Entity>) {
     let player_entity = gs.ecs.fetch::<Entity>();
     let names = gs.ecs.read_storage::<Name>();
     let backpack = gs.ecs.read_storage::<InBackpack>();
@@ -158,16 +158,20 @@ pub fn drop_menu(gs: &mut State, ctx: &mut Rltk) -> ItemMenuResult {
     }
 
     match ctx.key {
-        None => ItemMenuResult::NoResponse,
+        None => (ItemMenuResult::NoResponse, None),
         Some(key) => match key {
-            rltk::VirtualKeyCode::Escape => ItemMenuResult::Cancel,
+            rltk::VirtualKeyCode::Escape => (ItemMenuResult::Cancel, None),
             _ => {
                 let selection = rltk::letter_to_option(key);
                 if selection > -1 && selection < count {
-                    return ItemMenuResult::Selected(droppable[selection as usize]);
+                    return (ItemMenuResult::Selected, Some(droppable[selection as usize]));
                 }
-                ItemMenuResult::NoResponse
+                (ItemMenuResult::NoResponse, None) 
             }
         }
     }
+}
+
+pub fn ranged_target(gs: &mut State, ctx: &mut Rltk, range: i32) -> (ItemMenuResult, Option<Point>) {
+    unimplemented!()
 }
