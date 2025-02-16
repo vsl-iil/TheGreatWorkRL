@@ -59,8 +59,11 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
                 => try_move_player(-1, 1, &mut gs.ecs),
             VirtualKeyCode::Numpad3 
                 => try_move_player(1, 1, &mut gs.ecs),
+
+            VirtualKeyCode::Period
+                => {},
             
-            VirtualKeyCode::G | VirtualKeyCode::Period 
+            VirtualKeyCode::G | VirtualKeyCode::Comma 
                 => get_item(&mut gs.ecs),
             VirtualKeyCode::I
                 => return RunState::ShowInventory,
@@ -94,35 +97,5 @@ fn get_item(ecs: &mut World) {
             let mut pickup = ecs.write_storage::<WantsToPickupItem>();
             pickup.insert(item, WantsToPickupItem { collected_by: *player_entity, item }).expect("Unable to insert want to pickup");
         }
-    }
-}
-
-pub enum CheatMenuResult {
-    UserInput(String),
-    InputDone,
-    NoResponse,
-} 
-
-#[cfg(debug_assertions)]
-fn cheat_input(ctx: &mut Rltk, input: String) -> CheatMenuResult {
-    let mut input = input;
-    match ctx.key {
-        None => CheatMenuResult::NoResponse,
-        Some(key)
-            => {
-                match key {
-                    rltk::VirtualKeyCode::Return => CheatMenuResult::InputDone,
-                    _ => {
-                        let letter = char::from_u32(rltk::letter_to_option(key) as u32 + 41);
-                        if let Some(ch) = letter {
-                            input.push(ch);
-                            CheatMenuResult::UserInput(input)
-                        } else {
-                            CheatMenuResult::NoResponse
-                        }
-
-                    }
-                }
-            }
     }
 }

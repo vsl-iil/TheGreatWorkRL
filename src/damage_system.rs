@@ -38,7 +38,12 @@ pub fn clean_up_dead(ecs: &mut World) {
                         }
                         dead.push(entity);
                     },
-                    Some(_p) => log.entries.push("You are dead!".to_string()),
+                    Some(_p) => {
+                        let msg_dead = "You are dead!".to_string();
+                        if log.entries.iter().last().is_some_and(|msg| msg != &msg_dead) {
+                            log.entries.push(msg_dead);
+                        }
+                    },
                 }
             }
         }

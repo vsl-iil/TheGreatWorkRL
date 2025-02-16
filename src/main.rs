@@ -61,19 +61,20 @@ impl GameState for State {
                 newrunstate = RunState::PreRun;
             }
             RunState::ShowInventory => {
-                match gui::show_inventory(self, ctx) {
-                    (gui::ItemMenuResult::Cancel, _) 
+                let result = gui::show_inventory(self, ctx);
+                match result.0 {
+                    gui::ItemMenuResult::Cancel
                         => newrunstate = RunState::AwaitingInput,
-                    (gui::ItemMenuResult::NoResponse, _) => {}
-                    (gui::ItemMenuResult::Selected, item)
+                    gui::ItemMenuResult::NoResponse => {}
+                    gui::ItemMenuResult::Selected
                         => {
-                            let item = item.unwrap();
+                            let item = result.1.unwrap();
                             let is_ranged = self.ecs.read_storage::<Ranged>();
                             if let Some(item_ranged) = is_ranged.get(item) {
                                 newrunstate = RunState::ShowTargeting { range: item_ranged.range, item }
                             } else {
                                 let mut intent = self.ecs.write_storage::<WantsToUseItem>();
-                                intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem { item }).expect("Unable to insert want to use");
+                                intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem { item, target: None }).expect("Unable to insert want to use");
                                 newrunstate = RunState::PlayerTurn;
                             }
                         }
@@ -96,6 +97,15 @@ impl GameState for State {
             RunState::ShowTargeting { range, item }
                 => {
                     let target = gui::ranged_target(self, ctx, range);
+                    match target.0 {
+                        gui::ItemMenuResult::Cancel => newrunstate = RunState::AwaitingInput,
+                        gui::ItemMenuResult::NoResponse => {},
+                        gui::ItemMenuResult::Selected => {
+                            let mut intent = self.ecs.write_storage::<WantsToUseItem>();
+                            intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem { item, target: target.1 }).expect("Unable to insert use intent");
+                            newrunstate = RunState::PlayerTurn;
+                        }
+                    }
                 }
         }
 
