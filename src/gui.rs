@@ -1,7 +1,20 @@
-use rltk::{Point, Rltk, RGB};
+use rltk::{Point, Rltk, VirtualKeyCode, RGB};
 use specs::prelude::*;
 
-use crate::{components::{CombatStats, InBackpack, Name, Player, Position, Viewshed}, gamelog::GameLog, map::{Map, MAPWIDTH}, State};
+use crate::{components::{CombatStats, InBackpack, Name, Player, Position, Viewshed}, gamelog::GameLog, map::{Map, MAPWIDTH}, RunState, State};
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum MainMenuSelection {
+    NewGame,
+    LoadGame,
+    Quit
+}
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum MainMenuResult {
+    NoSelection { selected: MainMenuSelection },
+    Selected { selected: MainMenuSelection }
+}
 
 pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
     ctx.draw_box(0, 43, MAPWIDTH-1, 6, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
@@ -172,7 +185,7 @@ pub fn drop_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Enti
     }
 }
 
-pub fn ranged_target(gs: &mut State, ctx: &mut Rltk, range: i32) -> (ItemMenuResult, Option<rltk::Point>) {
+pub fn ranged_target(gs: &mut State, ctx: &mut Rltk, range: i32, radius: i32) -> (ItemMenuResult, Option<rltk::Point>) {
     let player_entity = gs.ecs.fetch::<Entity>();
     let player_pos = gs.ecs.fetch::<Point>();
     let viewsheds = gs.ecs.read_storage::<Viewshed>();
@@ -209,6 +222,15 @@ pub fn ranged_target(gs: &mut State, ctx: &mut Rltk, range: i32) -> (ItemMenuRes
         valid_target |= idx.x == mouse_pos.0 && idx.y == mouse_pos.1;
     }
 
+    if valid_target && radius > 0 {
+        for idx in available_cells.iter() {
+        let distance = rltk::DistanceAlg::Pythagoras.distance2d(rltk::Point { x: mouse_pos.0, y: mouse_pos.1 }, **idx);
+            if distance <= radius as f32 && distance > 0.0 {
+                ctx.set_bg(idx.x, idx.y, RGB::named(rltk::ORANGERED));
+            }
+        }
+    }
+
     if valid_target {
         ctx.set_bg(mouse_pos.0, mouse_pos.1, RGB::named(rltk::CYAN));
         if ctx.left_click {
@@ -222,4 +244,70 @@ pub fn ranged_target(gs: &mut State, ctx: &mut Rltk, range: i32) -> (ItemMenuRes
     }
 
     (ItemMenuResult::NoResponse, None)
+}
+
+pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
+    let runstate = gs.ecs.fetch::<RunState>();
+    let game_exists = crate::saveload_system::does_save_exist();
+
+    ctx.print_color_centered(15, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Dungeon of Doom");
+
+    if let RunState::MainMenu { menu_selection: selection } = *runstate {
+        if selection == MainMenuSelection::NewGame {
+            ctx.print_color_centered(24, RGB::named(rltk::BLACK), RGB::named(rltk::YELLOW), " New Game ");
+        } else {
+            ctx.print_color_centered(24, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), " New Game ");
+        }
+
+        if game_exists {
+            if selection == MainMenuSelection::LoadGame {
+                ctx.print_color_centered(26, RGB::named(rltk::BLACK), RGB::named(rltk::YELLOW), " Load Game ");
+            } else {
+                ctx.print_color_centered(26, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), " Load Game ");
+            }
+        }
+
+        if selection == MainMenuSelection::Quit {
+            ctx.print_color_centered(28, RGB::named(rltk::BLACK), RGB::named(rltk::YELLOW), " Quit ");
+        } else {
+            ctx.print_color_centered(28, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), " Quit ");
+        }
+
+
+        match ctx.key {
+            None => return MainMenuResult::NoSelection { selected: selection },
+            Some(key) => {
+                match key {
+                    VirtualKeyCode::Up => {
+                        let mut newselection;
+                        match selection {
+                            MainMenuSelection::NewGame  => newselection = MainMenuSelection::Quit,
+                            MainMenuSelection::LoadGame => newselection = MainMenuSelection::NewGame,
+                            MainMenuSelection::Quit     => newselection = MainMenuSelection::LoadGame,
+                        }
+                        if newselection == MainMenuSelection::LoadGame && !game_exists {
+                            newselection = MainMenuSelection::NewGame;
+                        }
+                        return MainMenuResult::NoSelection { selected: newselection }
+                    },
+                    VirtualKeyCode::Down => {
+                        let mut newselection;
+                        match selection {
+                            MainMenuSelection::NewGame  => newselection = MainMenuSelection::LoadGame,
+                            MainMenuSelection::LoadGame => newselection = MainMenuSelection::Quit,
+                            MainMenuSelection::Quit     => newselection = MainMenuSelection::NewGame,
+                        }
+                        if newselection == MainMenuSelection::LoadGame && !game_exists {
+                            newselection = MainMenuSelection::Quit;
+                        }
+                        return MainMenuResult::NoSelection { selected: newselection }
+                    },
+                    VirtualKeyCode::Return => return MainMenuResult::Selected { selected: selection },
+                    _ => return MainMenuResult::NoSelection { selected: selection }
+                }
+            }
+        }
+    }
+
+    MainMenuResult::NoSelection { selected: MainMenuSelection::NewGame }
 }

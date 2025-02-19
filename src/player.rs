@@ -1,6 +1,6 @@
-use rltk::{Point, Rltk, VirtualKeyCode};
+use rltk::{Point, RandomNumberGenerator, Rltk, VirtualKeyCode};
 use specs::prelude::*;
-use crate::{components::{CombatStats, Item, Viewshed, WantsToMelee, WantsToPickupItem}, gamelog::GameLog, RunState};
+use crate::{components::{CombatStats, Confusion, Item, Viewshed, WantsToMelee, WantsToPickupItem}, gamelog::GameLog, RunState};
 
 use super::{Position, Player, Map, State};
 use std::cmp::{min, max};
@@ -11,11 +11,28 @@ fn try_move_player(dx: i32, dy: i32, ecs: &mut World) {
     let mut viewsheds = ecs.write_storage::<Viewshed>();
     let combat_stats = ecs.read_storage::<CombatStats>();
     let mut wants_to_melee = ecs.write_storage::<WantsToMelee>();
+    let mut confusion = ecs.write_storage::<Confusion>();
 
     let entities = ecs.entities();
     let map = ecs.fetch::<Map>();
 
+    let mut dx = dx;
+    let mut dy = dy;
+
     for (entity, _player, pos, viewshed) in (&entities, &mut players, &mut positions, &mut viewsheds).join() {
+
+        // Player is confused
+        if let Some(confused) = confusion.get_mut(entity) {
+            confused.turns -= 1;
+            if confused.turns < 1 {
+                confusion.remove(entity);
+            }
+
+            let mut rng = ecs.write_resource::<RandomNumberGenerator>();
+            dx = rng.roll_dice(1, 3) - 2;
+            dy = rng.roll_dice(1, 3) - 2;
+        }
+
         if pos.x + dx < 1 || pos.x + dx > map.width-1 || pos.y + dy < 1 || pos.y + dy > map.height-1 { return; }
         let dest = map.xy_idx(pos.x + dx, pos.y + dy);
 
@@ -69,7 +86,9 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
                 => return RunState::ShowInventory,
             VirtualKeyCode::D
                 => return RunState::ShowDropItem,
-            _ => { return RunState::AwaitingInput }
+            VirtualKeyCode::Escape
+                => return RunState::SaveGame,
+            _ => return RunState::AwaitingInput 
         }
     }
 

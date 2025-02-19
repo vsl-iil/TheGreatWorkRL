@@ -1,7 +1,7 @@
 use rltk::{RandomNumberGenerator, RGB};
-use specs::prelude::*;
+use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
 
-use crate::{components::{BlocksTile, CombatStats, Consumable, InflictsDamage, Item, Monster, Name, Player, Position, ProvidesHealing, Ranged, Renderable, Viewshed}, rect::Rect};
+use crate::{components::{AreaOfEffect, BlocksTile, CombatStats, Confusion, Consumable, InflictsDamage, Item, Monster, Name, Player, Position, ProvidesHealing, Ranged, Renderable, SerializeMe, Viewshed}, rect::Rect};
 
 pub const MAX_MONSTERS: i32 = 4;
 pub const MAX_ITEMS: i32 = 2;
@@ -25,6 +25,7 @@ pub fn player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
             defence: 5,
             power: 5
         })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build()
 }
 
@@ -63,6 +64,7 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
             defence: 1,
             power: 7
         })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -113,11 +115,13 @@ fn random_item(ecs: &mut World, x: i32, y: i32) {
     let roll: i32;
     {
         let mut rng = ecs.write_resource::<RandomNumberGenerator>();
-        roll = rng.roll_dice(1, 2);
+        roll = rng.roll_dice(1, 4);
     }
 
     match roll {
         1 => healing_potion(ecs, x, y),
+        2 => fireball_scroll(ecs, x, y),
+        3 => confusion_scroll(ecs, x, y),
         _ => magic_missile_scroll(ecs, x, y),
     }
 }
@@ -136,6 +140,7 @@ fn healing_potion(ecs: &mut World, x: i32, y: i32) {
         .with(Item {})
         .with(Consumable {})
         .with(ProvidesHealing { heal_amount: 8 })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -154,5 +159,45 @@ fn magic_missile_scroll(ecs: &mut World, x: i32, y: i32) {
         .with(Consumable {})
         .with(Ranged { range: 6 })
         .with(InflictsDamage { damage: 7 })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+fn fireball_scroll(ecs: &mut World, x: i32, y: i32) {
+    ecs
+        .create_entity()
+        .with(Position {x, y})
+        .with(Renderable {
+            glyph: rltk::to_cp437('?'),
+            fg: RGB::named(rltk::ORANGE),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2
+        })
+        .with(Name { name: "Scroll of fireball".to_string()})
+        .with(Item {})
+        .with(Consumable {})
+        .with(Ranged { range: 6 })
+        .with(InflictsDamage { damage: 20 })
+        .with(AreaOfEffect { radius: 3 })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+fn confusion_scroll(ecs: &mut World, x: i32, y: i32) {
+    ecs
+        .create_entity()
+        .with(Position {x, y})
+        .with(Renderable {
+            glyph: rltk::to_cp437('?'),
+            fg: RGB::named(rltk::PINK),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2
+        })
+        .with(Name { name: "Scroll of confusion".to_string()})
+        .with(Item {})
+        .with(Consumable {})
+        .with(Ranged { range: 6 })
+        .with(Confusion { turns: 4 })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }

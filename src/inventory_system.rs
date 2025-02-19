@@ -1,6 +1,6 @@
 use specs::prelude::*;
 
-use crate::{components::{CombatStats, Consumable, InBackpack, InflictsDamage, Name, Position, ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem, WantsToUseItem}, gamelog::GameLog, map::Map};
+use crate::{components::{AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage, Name, Position, ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem, WantsToUseItem}, gamelog::GameLog, map::Map};
 
 pub struct InventorySystem {}
 
@@ -45,6 +45,8 @@ impl<'a> System<'a> for ItemUseSystem {
                         ReadStorage<'a, Name>,
                         ReadStorage<'a, ProvidesHealing>,
                         ReadStorage<'a, InflictsDamage>,
+                        WriteStorage<'a, Confusion>,
+                        ReadStorage<'a, AreaOfEffect>,
                         WriteStorage<'a, SufferDamage>,
                         ReadStorage<'a, Consumable>,
                         WriteStorage<'a, CombatStats>,
@@ -52,21 +54,47 @@ impl<'a> System<'a> for ItemUseSystem {
                     );
 
  fn run(&mut self, data: Self::SystemData) {
-    let (player_entity, mut gamelog, entities, mut want_use, names, healing, damaging, mut suffering, consumables, mut combat_stats, map) = data;
+    let (player_entity, mut gamelog, entities, mut want_use, names, healing, damaging, mut confusion, aoe, mut suffering, consumables, mut combat_stats, map) = data;
 
-    for (entity, usable, stats) in (&entities, &want_use, &mut combat_stats).join() {
+    for (entity, usable) in (&entities, &want_use).join() {
+        let mut targets = vec![];
+        match usable.target {
+            None => { targets.push(*player_entity)},
+            Some(target) => {
+                let area_effect = aoe.get(usable.item);
+                match area_effect {
+                    None => {
+                        let idx = map.xy_idx(target.x, target.y);
+                        for mob in map.tile_content[idx].iter() {
+                            targets.push(*mob);
+                        }
+                    },
+                    Some(area) => {
+                        let mut blast_tiles = rltk::field_of_view(target, area.radius, &*map);
+                        blast_tiles.retain(|p| p.x > 0 && p.x < map.width-1 && p.y > 0 && p.y < map.height-1);
+                        for tile_idx in blast_tiles.iter() {
+                            let idx = map.xy_idx(tile_idx.x, tile_idx.y);
+                            for mob in map.tile_content[idx].iter() {
+                                targets.push(*mob);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let item_heals = healing.get(usable.item);
         match item_heals {
             None => {},
             Some(healer) => {
-                stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount);
-                if entity == *player_entity {
-                    let mut healer_name = "something";
-                    if let Some(name) = names.get(usable.item) {
-                        healer_name = &name.name;
+                for target in targets.iter() {
+                    let stats = combat_stats.get_mut(*target);
+                    if let Some(stats) = stats {
+                        stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount);
+                        if entity == *player_entity {
+                            gamelog.entries.push(format!("You use the {}, healing {} hp.", names.get(usable.item).unwrap().name, healer.heal_amount));
+                        }
                     }
-                    gamelog.entries.push(format!("You drank the {}, healing {} hp.", healer_name, healer.heal_amount));
-                    
                 }
             }
         }
@@ -75,24 +103,49 @@ impl<'a> System<'a> for ItemUseSystem {
         match item_damages {
             None => {},
             Some(damage) => {
-                let target = usable.target.unwrap();
-                let idx = map.xy_idx(target.x, target.y);
-                for mob in map.tile_content[idx].iter() {
+                for mob in targets.iter() {
                     SufferDamage::new_damage(&mut suffering, *mob, damage.damage);
                     if entity == *player_entity {
                         let mut mob_name = "someone";
-                        let mut item_name = "item";
-                        if let Some(name) = names.get(*mob) {
-                            mob_name = &name.name;
+                        if let Some(mname) = names.get(*mob) {
+                            mob_name = &mname.name;
                         }
-                        if let Some(name) = names.get(usable.item) {
-                            item_name = &name.name;
+                        let mut item_name = "something";
+                        if let Some(iname) = names.get(usable.item) {
+                            item_name = &iname.name;
                         }
 
                         gamelog.entries.push(format!("You use {} on {}, inflicting {} hp.", item_name, mob_name, damage.damage));
                     }
                 }
             }
+        }
+
+        let mut add_confusion = vec![];
+        let item_confuses = confusion.get(usable.item);
+        match item_confuses {
+            None => {},
+            Some(confuse) => {
+                for mob in targets.iter() {
+                    add_confusion.push((*mob, confuse.turns));
+                    if entity == *player_entity {
+                        let mut mob_name = "someone";
+                        if let Some(mname) = names.get(*mob) {
+                            mob_name = &mname.name;
+                        }
+                        let mut item_name = "something";
+                        if let Some(iname) = names.get(usable.item) {
+                            item_name = &iname.name;
+                        }
+
+                        gamelog.entries.push(format!("You use {} on {}, confusing them.", item_name, mob_name));
+                    }
+                }
+            }
+        }
+
+        for mob in add_confusion {
+            confusion.insert(mob.0, Confusion { turns: mob.1 }).expect("Unable to insert confusion status");
         }
 
         if let Some(_) = consumables.get(usable.item) {
