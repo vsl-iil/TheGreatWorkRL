@@ -1,8 +1,7 @@
 use std::fs::{self, File};
 use std::path::Path;
 
-#[allow(deprecated)]
-use specs::error::NoError;
+use std::convert::Infallible;
 use specs::saveload::SimpleMarkerAllocator;
 use specs::{Entity, Join};
 use specs::{saveload::{MarkedBuilder, SimpleMarker, SerializeComponents, DeserializeComponents}, Builder, World, WorldExt};
@@ -13,8 +12,7 @@ use crate::components::*;
 macro_rules! serialize_individually {
     ($ecs:expr, $ser:expr, $data:expr, $( $type:ty),*) => {
         $(
-        #[allow(deprecated)]
-        SerializeComponents::<NoError, SimpleMarker<SerializeMe>>::serialize(
+        SerializeComponents::<Infallible, SimpleMarker<SerializeMe>>::serialize(
             &( $ecs.read_storage::<$type>(), ),
             &$data.0,
             &$data.1,
@@ -28,8 +26,7 @@ macro_rules! serialize_individually {
 macro_rules! deserialize_individually {
     ($ecs:expr, $de:expr, $data:expr, $( $type:ty),*) => {
         $(
-        #[allow(deprecated)]
-        DeserializeComponents::<NoError, _>::deserialize(
+        DeserializeComponents::<Infallible, _>::deserialize(
             &mut ( &mut $ecs.write_storage::<$type>(), ),
             &mut $data.0, // entities
             &mut $data.1, // marker
@@ -61,7 +58,7 @@ pub fn save_game(ecs: &mut World) {
         serialize_individually!(ecs, serializer, data, Position, Renderable, Player, Viewshed, Monster, 
             Name, BlocksTile, CombatStats, SufferDamage, WantsToMelee, Item, Consumable, Ranged, InflictsDamage, 
             AreaOfEffect, Confusion, ProvidesHealing, InBackpack, WantsToPickupItem, WantsToUseItem,
-            WantsToDropItem, SerializationHelper);
+            WantsToDropItem, Teleport, SerializationHelper);
     }
 
     ecs.delete_entity(savehelper).expect("Crash on cleanup");
@@ -91,7 +88,7 @@ pub fn load_game(ecs: &mut World) {
         deserialize_individually!(ecs, de, d, Position, Renderable, Player, Viewshed, Monster, 
             Name, BlocksTile, CombatStats, SufferDamage, WantsToMelee, Item, Consumable, Ranged, InflictsDamage, 
             AreaOfEffect, Confusion, ProvidesHealing, InBackpack, WantsToPickupItem, WantsToUseItem,
-            WantsToDropItem, SerializationHelper
+            WantsToDropItem, Teleport, SerializationHelper
         );
     }
 

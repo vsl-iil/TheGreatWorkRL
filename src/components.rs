@@ -1,7 +1,8 @@
 use specs::prelude::*;
 use specs_derive::*;
-#[allow(deprecated)]
-use specs::error::NoError;
+
+use std::convert::Infallible;
+type NoError = Infallible;
 use serde::{Serialize, Deserialize};
 use specs::saveload::{Marker, ConvertSaveload};
 use rltk::{Point, RGB};
@@ -131,7 +132,7 @@ pub struct Agitated {
 
 /// Safe teleport will always transport you to an empty place.
 /// Unsafe may teleport you inside a wall.
-#[derive(Component, Debug, ConvertSaveload)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct Teleport {
     pub safe: bool
 }
