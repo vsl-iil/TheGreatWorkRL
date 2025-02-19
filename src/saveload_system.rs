@@ -1,6 +1,7 @@
 use std::fs::{self, File};
 use std::path::Path;
 
+#[allow(deprecated)]
 use specs::error::NoError;
 use specs::saveload::SimpleMarkerAllocator;
 use specs::{Entity, Join};
@@ -8,9 +9,11 @@ use specs::{saveload::{MarkedBuilder, SimpleMarker, SerializeComponents, Deseria
 
 use crate::components::*;
 
+#[allow(deprecated)]
 macro_rules! serialize_individually {
     ($ecs:expr, $ser:expr, $data:expr, $( $type:ty),*) => {
         $(
+        #[allow(deprecated)]
         SerializeComponents::<NoError, SimpleMarker<SerializeMe>>::serialize(
             &( $ecs.read_storage::<$type>(), ),
             &$data.0,
@@ -25,6 +28,7 @@ macro_rules! serialize_individually {
 macro_rules! deserialize_individually {
     ($ecs:expr, $de:expr, $data:expr, $( $type:ty),*) => {
         $(
+        #[allow(deprecated)]
         DeserializeComponents::<NoError, _>::deserialize(
             &mut ( &mut $ecs.write_storage::<$type>(), ),
             &mut $data.0, // entities

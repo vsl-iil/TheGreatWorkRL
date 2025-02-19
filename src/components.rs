@@ -1,5 +1,6 @@
 use specs::prelude::*;
 use specs_derive::*;
+#[allow(deprecated)]
 use specs::error::NoError;
 use serde::{Serialize, Deserialize};
 use specs::saveload::{Marker, ConvertSaveload};
@@ -126,6 +127,13 @@ pub struct Confusion {
 #[derive(Component, Debug, ConvertSaveload)]
 pub struct Agitated {
     pub turns: i32
+}
+
+/// Safe teleport will always transport you to an empty place.
+/// Unsafe may teleport you inside a wall.
+#[derive(Component, Debug, ConvertSaveload)]
+pub struct Teleport {
+    pub safe: bool
 }
 
 pub struct SerializeMe;

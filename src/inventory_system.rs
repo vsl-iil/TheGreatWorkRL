@@ -1,6 +1,7 @@
+use rltk::RandomNumberGenerator;
 use specs::prelude::*;
 
-use crate::{components::{AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage, Name, Position, ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem, WantsToUseItem}, gamelog::GameLog, map::Map};
+use crate::{components::{AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage, Name, Position, ProvidesHealing, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToUseItem}, gamelog::GameLog, map::Map};
 
 pub struct InventorySystem {}
 
@@ -43,18 +44,22 @@ impl<'a> System<'a> for ItemUseSystem {
                         Entities<'a>,
                         WriteStorage<'a, WantsToUseItem>,
                         ReadStorage<'a, Name>,
+                        WriteStorage<'a, Viewshed>,
                         ReadStorage<'a, ProvidesHealing>,
                         ReadStorage<'a, InflictsDamage>,
                         WriteStorage<'a, Confusion>,
+                        WriteStorage<'a, Teleport>,
+                        WriteStorage<'a, Position>,
                         ReadStorage<'a, AreaOfEffect>,
                         WriteStorage<'a, SufferDamage>,
                         ReadStorage<'a, Consumable>,
                         WriteStorage<'a, CombatStats>,
-                        ReadExpect<'a, Map>
+                        WriteExpect<'a, RandomNumberGenerator>,
+                        WriteExpect<'a, Map>
                     );
 
  fn run(&mut self, data: Self::SystemData) {
-    let (player_entity, mut gamelog, entities, mut want_use, names, healing, damaging, mut confusion, aoe, mut suffering, consumables, mut combat_stats, map) = data;
+    let (player_entity, mut gamelog, entities, mut want_use, names, mut viewsheds, healing, damaging, mut confusion, teleport, mut playerpos, aoe, mut suffering, consumables, mut combat_stats, mut rng, mut map) = data;
 
     for (entity, usable) in (&entities, &want_use).join() {
         let mut targets = vec![];
@@ -92,7 +97,7 @@ impl<'a> System<'a> for ItemUseSystem {
                     if let Some(stats) = stats {
                         stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount);
                         if entity == *player_entity {
-                            gamelog.entries.push(format!("You use the {}, healing {} hp.", names.get(usable.item).unwrap().name, healer.heal_amount));
+                            gamelog.entries.push(format!("You used the {}, healing {} hp.", names.get(usable.item).unwrap().name, healer.heal_amount));
                         }
                     }
                 }
@@ -115,7 +120,7 @@ impl<'a> System<'a> for ItemUseSystem {
                             item_name = &iname.name;
                         }
 
-                        gamelog.entries.push(format!("You use {} on {}, inflicting {} hp.", item_name, mob_name, damage.damage));
+                        gamelog.entries.push(format!("You used {} on {}, inflicting {} hp.", item_name, mob_name, damage.damage));
                     }
                 }
             }
@@ -138,7 +143,7 @@ impl<'a> System<'a> for ItemUseSystem {
                             item_name = &iname.name;
                         }
 
-                        gamelog.entries.push(format!("You use {} on {}, confusing them.", item_name, mob_name));
+                        gamelog.entries.push(format!("You used {} on {}, confusing them.", item_name, mob_name));
                     }
                 }
             }
@@ -146,6 +151,41 @@ impl<'a> System<'a> for ItemUseSystem {
 
         for mob in add_confusion {
             confusion.insert(mob.0, Confusion { turns: mob.1 }).expect("Unable to insert confusion status");
+        }
+
+        let item_teleports = teleport.get(usable.item);
+        match item_teleports {
+            None => {},
+            Some(teleporting) => {
+                let mut x = rng.roll_dice(1, map.width-2)+1;
+                let mut y = rng.roll_dice(1, map.height-2)+1;
+
+                while map.tiles[map.xy_idx(x, y)] == crate::map::TileType::Wall && teleporting.safe {
+                    x = rng.roll_dice(1, map.width-2)+1; 
+                    y = rng.roll_dice(1, map.height-2)+1;
+                }
+
+                if let Some(player_pos) = playerpos.get_mut(*player_entity) {
+                    player_pos.x = x;
+                    player_pos.y = y;
+                }
+
+                let idx = map.xy_idx(x, y);
+                if map.tiles[idx] == crate::map::TileType::Wall {
+                    if let Some(stats) = combat_stats.get_mut(*player_entity) {
+                        stats.hp = 0;
+                        gamelog.entries.push(format!("You teleported into a wall and suffocated."));
+                        viewsheds.get_mut(*player_entity).unwrap().dirty = true;
+                    }
+                } else {
+                    for mob in map.tile_content[idx].iter_mut() {
+                        if let Some(stats) = combat_stats.get_mut(*mob) {
+                            stats.hp = 0;
+                            gamelog.entries.push(format!("You telefragged a poor {}.", names.get(*mob).unwrap().name));
+                        }
+                    }
+                }
+            }
         }
 
         if let Some(_) = consumables.get(usable.item) {
