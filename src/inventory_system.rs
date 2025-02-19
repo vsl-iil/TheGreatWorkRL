@@ -174,7 +174,7 @@ impl<'a> System<'a> for ItemUseSystem {
                 if map.tiles[idx] == crate::map::TileType::Wall {
                     if let Some(stats) = combat_stats.get_mut(*player_entity) {
                         stats.hp = 0;
-                        gamelog.entries.push(format!("You teleported into a wall and suffocated."));
+                        gamelog.entries.push("You teleported into a wall and suffocated.".to_string());
                         viewsheds.get_mut(*player_entity).unwrap().dirty = true;
                     }
                 } else {
@@ -188,7 +188,7 @@ impl<'a> System<'a> for ItemUseSystem {
             }
         }
 
-        if let Some(_) = consumables.get(usable.item) {
+        if consumables.get(usable.item).is_some() {
             entities.delete(usable.item).expect("Unable to delete consumable");
         }
     }

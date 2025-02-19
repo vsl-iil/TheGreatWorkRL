@@ -116,16 +116,14 @@ pub fn show_inventory(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option
     ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
 
     let mut usable: Vec<Entity> = vec![];
-    let mut j = 0;
-    for (entity, _pack, name) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity) {
+    for (j, (entity, _pack, name)) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity).enumerate() {
         ctx.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
         ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
         ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
 
-        ctx.print(21, y, &name.name.to_string());
+        ctx.print(21, y, name.name.to_string());
         usable.push(entity);
         y += 1;
-        j += 1;
     }
 
     match ctx.key {
@@ -158,16 +156,14 @@ pub fn drop_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Enti
     ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
 
     let mut droppable: Vec<Entity> = vec![];
-    let mut j = 0;
-    for (entity, _pack, name) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity) {
+    for (j, (entity, _pack, name)) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity).enumerate() {
         ctx.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
         ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
         ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
 
-        ctx.print(21, y, &name.name.to_string());
+        ctx.print(21, y, name.name.to_string());
         droppable.push(entity);
         y += 1;
-        j += 1;
     }
 
     match ctx.key {
