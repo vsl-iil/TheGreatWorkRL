@@ -1,6 +1,6 @@
 use rltk::{Point, RandomNumberGenerator, Rltk, VirtualKeyCode};
 use specs::prelude::*;
-use crate::{components::{CombatStats, Confusion, Item, Viewshed, WantsToMelee, WantsToPickupItem}, gamelog::GameLog, RunState};
+use crate::{components::{CombatStats, Confusion, Item, Monster, Viewshed, WantsToMelee, WantsToPickupItem}, gamelog::GameLog, RunState};
 
 use super::{Position, Player, Map, State};
 use std::cmp::{min, max};
@@ -77,8 +77,8 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Numpad3 
                 => try_move_player(1, 1, &mut gs.ecs),
 
-            VirtualKeyCode::Period
-                => {},
+            VirtualKeyCode::Period | VirtualKeyCode::Numpad5
+                => return skip_turn(&mut gs.ecs),
             
             VirtualKeyCode::G | VirtualKeyCode::Comma 
                 => get_item(&mut gs.ecs),
@@ -117,4 +117,30 @@ fn get_item(ecs: &mut World) {
             pickup.insert(item, WantsToPickupItem { collected_by: *player_entity, item }).expect("Unable to insert want to pickup");
         }
     }
+}
+
+fn skip_turn(ecs: &mut World) -> RunState {
+    let mut can_heal = true;
+    let player_entity = ecs.fetch::<Entity>();
+    let viewshed = ecs.read_storage::<Viewshed>();
+    let player_viewshed = viewshed.get(*player_entity);
+    let monsters = ecs.read_storage::<Monster>();
+    let map = ecs.fetch::<Map>();
+
+    if let Some(viewshed) = player_viewshed {
+        for tile in viewshed.visible_tiles.iter() {
+            let idx = map.xy_idx(tile.x, tile.y);
+            for entity_id in map.tile_content[idx].iter() {
+                can_heal &= monsters.get(*entity_id).is_some();
+            }
+        }
+    }
+
+    if can_heal {
+        if let Some(stats) = ecs.write_storage::<CombatStats>().get_mut(*player_entity) {
+            stats.hp = min(stats.hp + 1, stats.max_hp);
+        }
+    }
+
+    RunState::PlayerTurn
 }

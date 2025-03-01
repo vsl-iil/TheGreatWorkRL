@@ -170,12 +170,12 @@ impl<'a> System<'a> for ItemUseSystem {
                     player_pos.y = y;
                 }
 
+                viewsheds.get_mut(*player_entity).unwrap().dirty = true;
                 let idx = map.xy_idx(x, y);
                 if map.tiles[idx] == crate::map::TileType::Wall {
                     if let Some(stats) = combat_stats.get_mut(*player_entity) {
                         stats.hp = 0;
                         gamelog.entries.push("You teleported into a wall and suffocated.".to_string());
-                        viewsheds.get_mut(*player_entity).unwrap().dirty = true;
                     }
                 } else {
                     for mob in map.tile_content[idx].iter_mut() {
