@@ -36,6 +36,10 @@ pub fn draw_ui(ecs: &World, ctx: &mut Rltk) {
         y += 1;
     }
 
+    let map = ecs.fetch::<Map>();
+    let depth = format!("Floor {}", map.depth);
+    ctx.print_color(2, 43, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), &depth);
+
     draw_tooltip(ecs, ctx);
 }
 

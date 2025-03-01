@@ -1,6 +1,6 @@
 use rltk::{Point, RandomNumberGenerator, Rltk, VirtualKeyCode};
 use specs::prelude::*;
-use crate::{components::{CombatStats, Confusion, Item, Monster, Viewshed, WantsToMelee, WantsToPickupItem}, gamelog::GameLog, RunState};
+use crate::{components::{CombatStats, Confusion, Item, Monster, Viewshed, WantsToMelee, WantsToPickupItem}, gamelog::GameLog, map::TileType, RunState};
 
 use super::{Position, Player, Map, State};
 use std::cmp::{min, max};
@@ -77,7 +77,12 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Numpad3 
                 => try_move_player(1, 1, &mut gs.ecs),
 
-            VirtualKeyCode::Period | VirtualKeyCode::Numpad5
+            VirtualKeyCode::Period => {
+                if try_next_level(&gs.ecs) {
+                    return RunState::NextLevel;
+                }
+            }
+            VirtualKeyCode::Numpad5 | VirtualKeyCode::Space
                 => return skip_turn(&mut gs.ecs),
             
             VirtualKeyCode::G | VirtualKeyCode::Comma 
@@ -143,4 +148,17 @@ fn skip_turn(ecs: &mut World) -> RunState {
     }
 
     RunState::PlayerTurn
+}
+
+pub fn try_next_level(ecs: &World) -> bool {
+    let Point {x: player_x, y: player_y} = *ecs.fetch::<Point>();
+    let map = ecs.fetch::<Map>();
+    let player_idx = map.xy_idx(player_x, player_y);
+    if map.tiles[player_idx] == TileType::DownStairs {
+        true
+    } else {
+        let mut gamelog = ecs.fetch_mut::<GameLog>();
+        gamelog.entries.push("There's no way down.".to_owned());
+        false
+    }
 }

@@ -58,13 +58,14 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
 }
 
 pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
-    let spawntable = room_table();
+    let spawntable = room_table(map_depth);
     let mut spawn_points: HashMap<(i32, i32), SpawnEntry> = HashMap::new();
 
     {
         let mut rng = ecs.write_resource::<RandomNumberGenerator>();
         let num_spawns = rng.roll_dice(1, MAX_MONSTERS + 3) + (map_depth - 1) - 3;
 
+        #[allow(clippy::map_entry)]
         for _ in 0..num_spawns {
             let mut added = false;
             let mut tries = 0;
@@ -205,15 +206,15 @@ fn teleport_scroll(ecs: &mut World, x: i32, y: i32) {
         .build();
 }
 
-fn room_table() -> RandomTable {
+fn room_table(map_depth: i32) -> RandomTable {
     RandomTable::new()
                 // Enemies
                 .add(SpawnEntry::Goblin, 12)
-                .add(SpawnEntry::Ork, 1)
+                .add(SpawnEntry::Ork, 1 + map_depth)
                 // Items
                 .add(SpawnEntry::HealingPotion, 7)
-                .add(SpawnEntry::FireballScroll, 2)
-                .add(SpawnEntry::ConfusionScroll, 2)
+                .add(SpawnEntry::FireballScroll, 2 + map_depth)
+                .add(SpawnEntry::ConfusionScroll, 2 + map_depth)
                 .add(SpawnEntry::TeleportScroll, 2)
                 .add(SpawnEntry::MissileScroll, 4)
 }

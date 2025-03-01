@@ -12,7 +12,8 @@ pub const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
 #[derive(PartialEq, Clone, Copy, Serialize, Deserialize)]
 pub enum TileType {
     Wall,
-    Floor
+    Floor,
+    DownStairs
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -24,6 +25,7 @@ pub struct Map {
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub blocked: Vec<bool>,
+    pub depth: i32,
 
     #[serde(skip_serializing)]
     #[serde(skip_deserializing)]
@@ -35,7 +37,7 @@ impl Map {
         (y as usize * MAPWIDTH) + x as usize
     }
 
-    pub fn new_map_rooms_and_corridors() -> Map {
+    pub fn new_map_rooms_and_corridors(new_depth: i32) -> Map {
         let mut map = Map {
             tiles: vec![TileType::Wall; MAPCOUNT],
             rooms: vec![],
@@ -44,13 +46,13 @@ impl Map {
             revealed_tiles: vec![false; MAPCOUNT],
             visible_tiles: vec![false; MAPCOUNT],
             blocked: vec![false; MAPCOUNT],
-            tile_content: vec![vec![]; MAPCOUNT]
+            tile_content: vec![vec![]; MAPCOUNT],
+            depth: new_depth
         };
 
-        let mut rooms: Vec<Rect> = vec![];
-        const MAX_ROOMS: i32 = 10;
-        const MIN_SIZE: i32 = 7;
-        const MAX_SIZE: i32 = 15;
+        const MAX_ROOMS: i32 = 30;
+        const MIN_SIZE: i32 = 6;
+        const MAX_SIZE: i32 = 10;
 
         let mut rng = RandomNumberGenerator::new();
 
@@ -63,15 +65,15 @@ impl Map {
             let new_room = Rect::new(x, y, w, h);
 
             let mut room_ok = true;
-            for other_room in rooms.iter() {
+            for other_room in map.rooms.iter() {
                 room_ok &= !other_room.intersect(&new_room);
 
             }
 
             if room_ok {
-                if !rooms.is_empty() {
+                if !map.rooms.is_empty() {
                     let (new_x, new_y) = new_room.center();
-                    let (prev_x, prev_y) = rooms[rooms.len()-1].center();
+                    let (prev_x, prev_y) = map.rooms[map.rooms.len()-1].center();
 
                     if rng.range(0, 2) == 1 {
                         map.apply_horizontal_tunnel(prev_x, new_x, prev_y);
@@ -83,11 +85,17 @@ impl Map {
                 }
 
                 map.apply_room_to_map(&new_room);
-                rooms.push(new_room);
+                map.rooms.push(new_room);
             }
         }
 
-        map.rooms = rooms;
+        let (stair_x, stair_y) = map.rooms.iter()
+                                          .last()
+                                          .expect("No rooms were generated?")
+                                          .center();
+
+        let idx = map.xy_idx(stair_x, stair_y);
+        map.tiles[idx] = TileType::DownStairs;
 
         map
     }
@@ -159,6 +167,10 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
                 }
                 TileType::Wall => {
                     glyph = rltk::to_cp437('#');
+                    fg = RGB::from_f32(0.8, 0.8, 0.95);
+                }
+                TileType::DownStairs => {
+                    glyph = rltk::to_cp437('>');
                     fg = RGB::from_f32(0.8, 0.8, 0.95);
                 }
             }
