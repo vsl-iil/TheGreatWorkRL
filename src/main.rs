@@ -26,6 +26,7 @@ mod gui;
 mod gamelog;
 mod spawner;
 mod saveload_system;
+mod random_table;
 
 pub struct State {
     pub ecs: World,
@@ -259,7 +260,7 @@ fn main() -> rltk::BError {
     gs.ecs.insert(player_entity);
 
     for room in map.rooms.iter().skip(1) {
-        spawner::spawn_room(&mut gs.ecs, room);
+        spawner::spawn_room(&mut gs.ecs, room, 1);
     }
 
     gs.ecs.insert(map);
