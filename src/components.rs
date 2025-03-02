@@ -77,10 +77,22 @@ pub struct Item {}
 #[derive(Component, Serialize, Deserialize, Clone, Debug)]
 pub struct Consumable {}
 
-#[derive(Component, Debug, ConvertSaveload, Clone)]
+//
+// ---=== Эффекты мобов / эффекты зелий ===---
+//
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
 pub struct ProvidesHealing {
     pub heal_amount: i32,
 }
+
+/// Safe teleport will always transport you to an empty place.
+/// Unsafe may teleport you inside a wall.
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+pub struct Teleport {
+    pub safe: bool
+}
+
+// ============================================
 
 #[derive(Component, Debug, ConvertSaveload)]
 pub struct InBackpack {
@@ -102,6 +114,12 @@ pub struct WantsToUseItem {
 #[derive(Component, Debug, ConvertSaveload)]
 pub struct WantsToDropItem {
     pub item: Entity,
+}
+
+#[derive(Component, Debug, ConvertSaveload)]
+pub struct  WantsToThrowItem {
+    pub item: Entity,
+    pub target: Point
 }
 
 #[derive(Component, Debug, ConvertSaveload, Clone)]
@@ -130,12 +148,8 @@ pub struct Agitated {
     pub turns: i32
 }
 
-/// Safe teleport will always transport you to an empty place.
-/// Unsafe may teleport you inside a wall.
 #[derive(Component, Debug, ConvertSaveload, Clone)]
-pub struct Teleport {
-    pub safe: bool
-}
+pub struct Weight(pub i32);
 
 pub struct SerializeMe;
 

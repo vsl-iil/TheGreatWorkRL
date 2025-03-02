@@ -1,7 +1,7 @@
 use damage_system::DamageSystem;
 use gamelog::GameLog;
 use gui::draw_ui;
-use inventory_system::{InventorySystem, ItemDropSystem, ItemUseSystem};
+use inventory_system::{InventorySystem, ItemDropSystem, ItemThrowSystem, ItemUseSystem};
 use map_indexing_system::MapIndexingSystem;
 use melee_combat_system::MeleeCombatSystem;
 use monster_ai_system::MonsterAI;
@@ -28,6 +28,7 @@ mod gamelog;
 mod spawner;
 mod saveload_system;
 mod random_table;
+mod staineffect_system;
 
 pub struct State {
     pub ecs: World,
@@ -82,6 +83,14 @@ impl GameState for State {
                 self.ecs.maintain();
                 newrunstate = RunState::PreRun;
             }
+            RunState::ShowHelp => {
+                let result = gui::keybinds_menu(ctx);
+                match result {
+                    gui::ItemMenuResult::Cancel
+                        => newrunstate = RunState::AwaitingInput,
+                    _   => {}
+                }
+            }
             RunState::ShowInventory => {
                 let result = gui::show_inventory(self, ctx);
                 match result.0 {
@@ -93,7 +102,7 @@ impl GameState for State {
                             let item = result.1.unwrap();
                             let is_ranged = self.ecs.read_storage::<Ranged>();
                             if let Some(item_ranged) = is_ranged.get(item) {
-                                newrunstate = RunState::ShowTargeting { range: item_ranged.range, item }
+                                newrunstate = RunState::ShowTargeting { range: item_ranged.range, item, targettype: TargetType::Use }
                             } else {
                                 let mut intent = self.ecs.write_storage::<WantsToUseItem>();
                                 intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem { item, target: None }).expect("Unable to insert want to use");
@@ -116,7 +125,7 @@ impl GameState for State {
                     (gui::ItemMenuResult::NoResponse, _) => {}
                 }
             }
-            RunState::ShowTargeting { range, item }
+            RunState::ShowTargeting { range, item, targettype }
                 => {
                     let mut radius = 0;
                     {
@@ -130,8 +139,13 @@ impl GameState for State {
                         gui::ItemMenuResult::Cancel => newrunstate = RunState::AwaitingInput,
                         gui::ItemMenuResult::NoResponse => {},
                         gui::ItemMenuResult::Selected => {
-                            let mut intent = self.ecs.write_storage::<WantsToUseItem>();
-                            intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem { item, target: target.1 }).expect("Unable to insert use intent");
+                            if targettype == TargetType::Use {
+                                let mut intent = self.ecs.write_storage::<WantsToUseItem>();
+                                intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem { item, target: target.1 }).expect("Unable to insert use intent");
+                            } else {
+                                let mut intent = self.ecs.write_storage::<WantsToThrowItem>();
+                                intent.insert(*self.ecs.fetch::<Entity>(), WantsToThrowItem { item, target: target.1.unwrap() }).expect("Unable to insert throw intent");
+                            }
                             newrunstate = RunState::PlayerTurn;
                         }
                     }
@@ -169,6 +183,21 @@ impl GameState for State {
             RunState::NextLevel => {
                 self.goto_next_level();
                 newrunstate = RunState::PreRun;
+            },
+            RunState::ShowThrowItem => {
+                let result = gui::throw_menu(self, ctx);
+                match result.0 {
+                    gui::ItemMenuResult::Selected => {
+                        let item = result.1.unwrap();
+                        let ws = self.ecs.read_storage::<Weight>();
+                        let weight = ws.get(item).map_or(0, |w| w.0);
+                        newrunstate = RunState::ShowTargeting { range: 6-weight, item, targettype: TargetType::Throw };
+                    },
+                    gui::ItemMenuResult::Cancel    
+                        => newrunstate = RunState::AwaitingInput,
+                    gui::ItemMenuResult::NoResponse
+                        => {},
+                }
             }
         }
 
@@ -199,6 +228,8 @@ impl State {
         itemuse.run_now(&self.ecs);
         let mut drop = ItemDropSystem {};
         drop.run_now(&self.ecs);
+        let mut throw = ItemThrowSystem {};
+        throw.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -282,19 +313,26 @@ pub enum RunState {
     PreRun,
     PlayerTurn,
     MonsterTurn,
+    ShowHelp,
     ShowInventory,
     ShowDropItem,
-    ShowTargeting{ range: i32, item: Entity },
+    ShowTargeting{ range: i32, item: Entity, targettype: TargetType },
     MainMenu{ menu_selection: gui::MainMenuSelection },
     SaveGame,
-    NextLevel
+    NextLevel,
+    ShowThrowItem
 }
 
+#[derive(PartialEq, Clone, Copy)]
+pub enum TargetType {
+    Use,
+    Throw
+}
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
     let mut context = RltkBuilder::simple80x50()
-        .with_title("Roguelike Tutorial")
+        .with_title("The Great Work")
         .build()?;
 
     context.with_post_scanlines(false);
@@ -326,6 +364,8 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Confusion>();
     gs.ecs.register::<Agitated>();
     gs.ecs.register::<Teleport>();
+    gs.ecs.register::<Weight>();
+    gs.ecs.register::<WantsToThrowItem>();
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();
 

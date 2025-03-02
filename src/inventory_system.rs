@@ -1,7 +1,7 @@
-use rltk::RandomNumberGenerator;
+use rltk::{Point, RandomNumberGenerator};
 use specs::prelude::*;
 
-use crate::{components::{AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage, Name, Position, ProvidesHealing, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToUseItem}, gamelog::GameLog, map::Map};
+use crate::{components::{AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage, Name, Position, ProvidesHealing, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem}, gamelog::GameLog, map::Map};
 
 pub struct InventorySystem {}
 
@@ -234,5 +234,63 @@ impl<'a> System<'a> for ItemDropSystem {
         }
 
         drop.clear();
+    }
+}
+
+
+pub struct ItemThrowSystem {}
+
+impl<'a> System<'a> for ItemThrowSystem {
+    #[allow(clippy::type_complexity)]
+    type SystemData = ( ReadExpect<'a, Entity>,
+                        WriteExpect<'a, GameLog>,
+                        Entities<'a>,
+                        WriteStorage<'a, WantsToThrowItem>,
+                        // WriteStorage<'a, InBackpack>,
+                        // WriteStorage<'a, Position>,
+                        ReadStorage<'a, Name>,
+                        // WriteStorage<'a, Weight>,
+                        WriteExpect<'a, Map>,
+                        // эффекты
+                        WriteStorage<'a, ProvidesHealing>,
+                        WriteStorage<'a, Teleport>
+                    );
+
+    fn run(&mut self, data: Self::SystemData) {
+        let (player_entity, mut log, entities, mut intentthrow, names, map,   mut healing, mut teleport) = data;
+
+        for (ents, to_throw) in (&entities, &mut intentthrow).join() {
+            let Point {x, y} = to_throw.target;
+            for mob in map.tile_content[map.xy_idx(x, y)].iter() {
+                // Список эффектов: ProvidesHealing, Teleport, 
+
+                // Heal
+                if let Some(heal) = healing.get(to_throw.item) {
+                    let heal_amount = heal.heal_amount;
+                    healing.insert(*mob, *heal).expect("Unable to apply healing to entity");
+                    
+                    if ents == *player_entity {
+                        let name = names.get(*mob).map_or("someone", |name| &name.name);
+                        log.entries.push(format!("{} heals for {} hp.", name, heal_amount));
+                    }
+
+
+                }
+
+                // Teleport
+                if let Some(tp) = teleport.get(to_throw.item) {
+                    teleport.insert(*mob, *tp).expect("Unable to apply teleport to entity");
+                    
+                    if ents == *player_entity {
+                        let name = names.get(*mob).map_or("someone", |name| &name.name);
+                        log.entries.push(format!("{} teleports!", name));
+                    }
+                }
+
+                // TODO: оставлять лужи
+            }
+            entities.delete(to_throw.item).expect("Unable to delete thrown entity");
+        }
+        intentthrow.clear();
     }
 }

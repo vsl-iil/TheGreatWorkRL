@@ -250,7 +250,7 @@ pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
     let runstate = gs.ecs.fetch::<RunState>();
     let game_exists = crate::saveload_system::does_save_exist();
 
-    ctx.print_color_centered(15, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Dungeon of Doom");
+    ctx.print_color_centered(15, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "The Great Work");
 
     if let RunState::MainMenu { menu_selection: selection } = *runstate {
         if selection == MainMenuSelection::NewGame {
@@ -310,4 +310,82 @@ pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
     }
 
     MainMenuResult::NoSelection { selected: MainMenuSelection::NewGame }
+}
+
+pub fn keybinds_menu(ctx: &mut Rltk) -> ItemMenuResult {
+    macro_rules! formstr {
+        ($key:literal, $desc:literal) => {
+            format!("{:5} - {}", $key, $desc)
+        };
+    }
+
+    ctx.draw_box(15, 5, 50, 25, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    ctx.print_color_centered(5, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Keybinds");
+    ctx.print_color(18, 30, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Press ESC to close");
+
+    let strings: Vec<String> = vec![
+        formstr!("←↑↓→", "move"),
+        formstr!(".", "descend to next level"),
+        formstr!("g | ,", "pick up an item"),
+        formstr!("space", "wait a turn"),
+        formstr!("i", "open inventory"),
+        formstr!("d", "drop an item"),
+        formstr!("t", "throw an item"),
+        formstr!("esc", "pause"),
+        formstr!("/", "help")
+    ];
+
+    for (i, s) in strings.iter().enumerate() {
+        ctx.print_color(16, 7+2*i, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), s);
+    }
+
+    match ctx.key {
+        None => ItemMenuResult::NoResponse,
+        Some(key)
+             => match key {
+                rltk::VirtualKeyCode::Escape => ItemMenuResult::Cancel,
+                _ => ItemMenuResult::NoResponse
+             }
+    }
+}
+
+pub fn throw_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Entity>) {
+    let player_entity = gs.ecs.fetch::<Entity>();
+    let names = gs.ecs.read_storage::<Name>();
+    let backpack = gs.ecs.read_storage::<InBackpack>();
+    let entities = gs.ecs.entities();
+
+    let inventory = (&backpack, &names).join().filter(|item| item.0.owner == *player_entity);
+    let count = inventory.count() as i32;
+
+    let mut y = 25 - (count / 2);
+    ctx.draw_box(15, y-2, 31, count+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    ctx.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Throw which item?");
+    ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
+
+    let mut throwable: Vec<Entity> = vec![];
+    for (j, (entity, _pack, name)) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity).enumerate() {
+        ctx.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
+        ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
+        ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
+
+        ctx.print(21, y, name.name.to_string());
+        throwable.push(entity);
+        y += 1;
+    }
+
+    match ctx.key {
+        None => (ItemMenuResult::NoResponse, None),
+        Some(key) => match key {
+            rltk::VirtualKeyCode::Escape => (ItemMenuResult::Cancel, None),
+            _ => {
+                let selection = rltk::letter_to_option(key);
+                if selection > -1 && selection < count {
+                    return (ItemMenuResult::Selected, Some(throwable[selection as usize]));
+                }
+                (ItemMenuResult::NoResponse, None) 
+            }
+        }
+    }
+
 }
