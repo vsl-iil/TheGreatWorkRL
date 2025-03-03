@@ -18,6 +18,7 @@ use player::*;
 mod rect;
 mod visibility_system;
 use staineffect_system::StainEffect;
+use trap_system::TrapSystem;
 use visibility_system::VisibilitySystem;
 mod monster_ai_system;
 mod map_indexing_system;
@@ -30,6 +31,8 @@ mod spawner;
 mod saveload_system;
 mod random_table;
 mod staineffect_system;
+mod trap_system;
+
 
 pub struct State {
     pub ecs: World,
@@ -144,8 +147,39 @@ impl GameState for State {
                                 let mut intent = self.ecs.write_storage::<WantsToUseItem>();
                                 intent.insert(*self.ecs.fetch::<Entity>(), WantsToUseItem { item, target: target.1 }).expect("Unable to insert use intent");
                             } else {
-                                let mut intent = self.ecs.write_storage::<WantsToThrowItem>();
-                                intent.insert(*self.ecs.fetch::<Entity>(), WantsToThrowItem { item, target: target.1.unwrap() }).expect("Unable to insert throw intent");
+                                {
+                                    let mut intent = self.ecs.write_storage::<WantsToThrowItem>();
+                                    intent.insert(*self.ecs.fetch::<Entity>(), WantsToThrowItem { item, target: target.1.unwrap() }).expect("Unable to insert throw intent");
+                                }
+                                // INFLICTS
+                                // Создаём лужу
+                                let heal;
+                                let tp;
+                                {
+                                    let healing = self.ecs.read_storage::<ProvidesHealing>();
+                                    let teleporting = self.ecs.read_storage::<Teleport>();
+
+                                    heal = healing.get(item).map(|n| *n);
+                                    tp = teleporting.get(item).map(|n| *n);
+                                }
+
+                                let mut puddle = self.ecs.create_entity();
+
+                                puddle = puddle.maybe_with(heal);
+                                puddle = puddle.maybe_with(tp);
+
+                                puddle = puddle
+                                .with(Renderable {
+                                    glyph: rltk::to_cp437(' '),
+                                    fg: rltk::RGB::named(rltk::BLACK),
+                                    bg: rltk::RGB::named(rltk::GREEN),
+                                    render_order: 10
+                                })
+                                .with(Puddle { lifetime: 3 })
+                                .with(Position {x: target.1.unwrap().x, y: target.1.unwrap().y });
+
+                                puddle.build();
+                                // Лужа готова
                             }
                             newrunstate = RunState::PlayerTurn;
                         }
@@ -233,6 +267,16 @@ impl State {
         throw.run_now(&self.ecs);
         let mut stain = StainEffect {};
         stain.run_now(&self.ecs);
+
+        let runstate;
+        {
+            let runstwriter = self.ecs.fetch::<RunState>();
+            runstate = *runstwriter;
+        }
+        if runstate == RunState::PlayerTurn {
+            let mut trap = TrapSystem {};
+            trap.run_now(&self.ecs);
+        }
 
         self.ecs.maintain();
     }
@@ -369,6 +413,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Teleport>();
     gs.ecs.register::<Weight>();
     gs.ecs.register::<Stained>();
+    gs.ecs.register::<Puddle>();
     gs.ecs.register::<WantsToThrowItem>();
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();

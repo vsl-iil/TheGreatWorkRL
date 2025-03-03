@@ -25,6 +25,7 @@ pub struct Map {
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub blocked: Vec<bool>,
+    pub puddles: Vec<i32>,
     pub depth: i32,
 
     #[serde(skip_serializing)]
@@ -47,6 +48,7 @@ impl Map {
             visible_tiles: vec![false; MAPCOUNT],
             blocked: vec![false; MAPCOUNT],
             tile_content: vec![vec![]; MAPCOUNT],
+            puddles: vec![0; MAPCOUNT],
             depth: new_depth
         };
 

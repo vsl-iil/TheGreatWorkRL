@@ -1,14 +1,16 @@
 use rltk::RandomNumberGenerator;
 use specs::prelude::*;
 
-use crate::{components::{CombatStats, Name, Position, ProvidesHealing, Stained, Teleport, Viewshed}, gamelog::GameLog, map::Map};
+use crate::{components::{CombatStats, Name, Position, ProvidesHealing, Puddle, Stained, Teleport, Viewshed}, gamelog::GameLog, map::Map};
 
 pub struct StainEffect {}
 
 impl<'a> System<'a> for StainEffect {
+    #[allow(clippy::type_complexity)]
     type SystemData = ( WriteStorage<'a, CombatStats>,
                         // ReadExpect<'a, Entity>,
                         WriteStorage<'a, Stained>,
+                        ReadStorage<'a, Puddle>,
                         Entities<'a>,
                         WriteExpect<'a, RandomNumberGenerator>,
                         WriteExpect<'a, Map>,
@@ -22,9 +24,10 @@ impl<'a> System<'a> for StainEffect {
                       );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut stats, mut stained, entities, mut rng, mut map, mut pos, mut viewsheds, mut log, names, mut heal, mut teleport) = data;
+        let (mut stats, mut stained, puddle, entities, mut rng, mut map, mut pos, mut viewsheds, mut log, names, mut heal, mut teleport) = data;
 
-        for (ents, _stain) in (&entities, &mut stained).join() {
+        for (ents, _stain, _puddle) in (&entities, &mut stained, !&puddle).join() {
+            // INFLICTS
             // Heal
             if let Some(healing) = heal.get(ents) {
                 if let Some(stat) = stats.get_mut(ents) {

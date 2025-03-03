@@ -77,6 +77,12 @@ pub struct Item {}
 #[derive(Component, Serialize, Deserialize, Clone, Debug)]
 pub struct Consumable {}
 
+/// Лужа зелья
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+pub struct Puddle { 
+    pub lifetime: i32 
+}
+
 //
 // ---=== Эффекты мобов / эффекты зелий ===---
 //
