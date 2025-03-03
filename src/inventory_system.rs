@@ -242,58 +242,56 @@ pub struct ItemThrowSystem {}
 
 impl<'a> System<'a> for ItemThrowSystem {
     #[allow(clippy::type_complexity)]
-    type SystemData = ( ReadExpect<'a, Entity>,
-                        WriteExpect<'a, GameLog>,
+    type SystemData = ( //ReadExpect<'a, Entity>,
                         Entities<'a>,
                         WriteStorage<'a, WantsToThrowItem>,
                         WriteStorage<'a, Stained>,
-                        // WriteStorage<'a, Position>,
-                        ReadStorage<'a, Name>,
-                        // WriteStorage<'a, Weight>,
                         WriteExpect<'a, Map>,
-                        ReadStorage<'a, CombatStats>,
+                        WriteStorage<'a, InBackpack>,
+                        WriteStorage<'a, Position>,
                         // эффекты
                         WriteStorage<'a, ProvidesHealing>,
                         WriteStorage<'a, Teleport>
                     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (player_entity, mut log, entities, mut intentthrow, mut stain, names, map, stats,   mut healing, mut teleport) = data;
+        let (entities, mut intentthrow, mut stain, map, mut backpack, mut pos,   mut healing, mut teleport) = data;
 
-        for (ents, to_throw) in (&entities, &mut intentthrow).join() {
+        for to_throw in (&mut intentthrow).join() {
             let Point {x, y} = to_throw.target;
             
+            let mut is_inflictor = false;
             for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                 // INFLICTS
                 // Список эффектов: ProvidesHealing, Teleport, 
 
+                let mut inflicts_effect = false;
                 // Heal
                 if let Some(heal) = healing.get(to_throw.item) {
-                    let heal_amount = heal.heal_amount;
+                    // let heal_amount = heal.heal_amount;
                     healing.insert(*mob, *heal).expect("Unable to apply healing inflict to entity");
-                    
-                    if ents == *player_entity && stats.get(ents).is_some() {
-                        let name = names.get(*mob).map_or("someone", |name| &name.name);
-                        log.entries.push(format!("{} heals for {} hp.", name, heal_amount));
-                    }
+                    inflicts_effect = true;
                 }
 
                 // Teleport
                 if let Some(tp) = teleport.get(to_throw.item) {
                     teleport.insert(*mob, *tp).expect("Unable to apply teleport inflict to entity");
-                    
-                    if ents == *player_entity && stats.get(ents).is_some() {
-                        let name = names.get(*mob).map_or("someone", |name| &name.name);
-                        log.entries.push(format!("{} teleports!", name));
-                    }
+                    inflicts_effect = true;
                 }
 
-                stain.insert(*mob, Stained {}).expect("Unable to stain entity");
-                // TODO: оставлять лужи
+                if inflicts_effect {
+                    stain.insert(*mob, Stained {}).expect("Unable to stain entity");
+                    is_inflictor = true;
+                }
             }
             
-
-            entities.delete(to_throw.item).expect("Unable to delete thrown entity");
+            if is_inflictor {
+                entities.delete(to_throw.item).expect("Unable to delete thrown entity");
+            } else {
+                backpack.remove(to_throw.item).expect("Unable to remove thrown item from backpack");
+                let Point {x, y} = to_throw.target;
+                pos.insert(to_throw.item, Position { x, y }).expect("Unable to place thrown item in position");
+            }
         }
         intentthrow.clear();
     }
