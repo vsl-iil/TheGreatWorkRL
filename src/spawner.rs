@@ -183,7 +183,6 @@ fn confusion_scroll(ecs: &mut World, x: i32, y: i32) {
 
 fn teleport_scroll(ecs: &mut World, x: i32, y: i32) {
     let safe;
-
     {
         let mut rng = ecs.fetch_mut::<RandomNumberGenerator>();
         safe = rng.roll_dice(1, 6) != 1;

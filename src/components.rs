@@ -80,6 +80,10 @@ pub struct Consumable {}
 //
 // ---=== Эффекты мобов / эффекты зелий ===---
 //
+
+#[derive(Component, Serialize, Deserialize, Clone, Debug)]
+pub struct Stained {}
+
 #[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
 pub struct ProvidesHealing {
     pub heal_amount: i32,

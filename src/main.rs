@@ -17,6 +17,7 @@ mod player;
 use player::*;
 mod rect;
 mod visibility_system;
+use staineffect_system::StainEffect;
 use visibility_system::VisibilitySystem;
 mod monster_ai_system;
 mod map_indexing_system;
@@ -230,6 +231,8 @@ impl State {
         drop.run_now(&self.ecs);
         let mut throw = ItemThrowSystem {};
         throw.run_now(&self.ecs);
+        let mut stain = StainEffect {};
+        stain.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -365,6 +368,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Agitated>();
     gs.ecs.register::<Teleport>();
     gs.ecs.register::<Weight>();
+    gs.ecs.register::<Stained>();
     gs.ecs.register::<WantsToThrowItem>();
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();

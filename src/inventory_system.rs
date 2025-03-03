@@ -1,7 +1,7 @@
 use rltk::{Point, RandomNumberGenerator};
 use specs::prelude::*;
 
-use crate::{components::{AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage, Name, Position, ProvidesHealing, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem}, gamelog::GameLog, map::Map};
+use crate::{components::{AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage, Name, Position, ProvidesHealing, Stained, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem}, gamelog::GameLog, map::Map};
 
 pub struct InventorySystem {}
 
@@ -246,7 +246,7 @@ impl<'a> System<'a> for ItemThrowSystem {
                         WriteExpect<'a, GameLog>,
                         Entities<'a>,
                         WriteStorage<'a, WantsToThrowItem>,
-                        // WriteStorage<'a, InBackpack>,
+                        WriteStorage<'a, Stained>,
                         // WriteStorage<'a, Position>,
                         ReadStorage<'a, Name>,
                         // WriteStorage<'a, Weight>,
@@ -257,7 +257,7 @@ impl<'a> System<'a> for ItemThrowSystem {
                     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (player_entity, mut log, entities, mut intentthrow, names, map,   mut healing, mut teleport) = data;
+        let (player_entity, mut log, entities, mut intentthrow, mut stain, names, map,   mut healing, mut teleport) = data;
 
         for (ents, to_throw) in (&entities, &mut intentthrow).join() {
             let Point {x, y} = to_throw.target;
@@ -267,7 +267,7 @@ impl<'a> System<'a> for ItemThrowSystem {
                 // Heal
                 if let Some(heal) = healing.get(to_throw.item) {
                     let heal_amount = heal.heal_amount;
-                    healing.insert(*mob, *heal).expect("Unable to apply healing to entity");
+                    healing.insert(*mob, *heal).expect("Unable to apply healing inflict to entity");
                     
                     if ents == *player_entity {
                         let name = names.get(*mob).map_or("someone", |name| &name.name);
@@ -279,7 +279,7 @@ impl<'a> System<'a> for ItemThrowSystem {
 
                 // Teleport
                 if let Some(tp) = teleport.get(to_throw.item) {
-                    teleport.insert(*mob, *tp).expect("Unable to apply teleport to entity");
+                    teleport.insert(*mob, *tp).expect("Unable to apply teleport inflict to entity");
                     
                     if ents == *player_entity {
                         let name = names.get(*mob).map_or("someone", |name| &name.name);
@@ -287,6 +287,7 @@ impl<'a> System<'a> for ItemThrowSystem {
                     }
                 }
 
+                stain.insert(*mob, Stained {}).expect("Unable to stain entity");
                 // TODO: оставлять лужи
             }
             entities.delete(to_throw.item).expect("Unable to delete thrown entity");
