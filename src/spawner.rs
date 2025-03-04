@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rltk::{RandomNumberGenerator, RGB};
 use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
 
-use crate::{components::{AreaOfEffect, BlocksTile, CombatStats, Confusion, Consumable, InflictsDamage, Item, Monster, Name, Player, Position, ProvidesHealing, Ranged, Renderable, SerializeMe, Teleport, Viewshed}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
+use crate::{components::{AreaOfEffect, BlocksTile, CombatStats, Confusion, Consumable, Explosion, InflictsDamage, InstantHarm, Item, LingerType, LingeringEffect, Monster, Name, Player, Position, ProvidesHealing, Ranged, Renderable, SerializeMe, Teleport, Viewshed}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
 
 pub const MAX_MONSTERS: i32 = 4;
 
@@ -84,21 +84,28 @@ pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
     }
 
     for spawn in spawn_points.iter() {
+        let (x, y) = (spawn.0.0, spawn.0.1);
         match spawn.1 {
             SpawnEntry::Goblin  
-                => goblin(ecs, spawn.0.0, spawn.0.1),
+                => goblin(ecs, x, y),
             SpawnEntry::Ork 
-                => ork(ecs, spawn.0.0, spawn.0.1),
-            SpawnEntry::MissileScroll
-                => magic_missile_scroll(ecs, spawn.0.0, spawn.0.1),
+                => ork(ecs, x, y),
+            // SpawnEntry::MissileScroll
+            //     => magic_missile_scroll(ecs, spawn.0.0, spawn.0.1),
             SpawnEntry::HealingPotion
-                => healing_potion(ecs, spawn.0.0, spawn.0.1),
-            SpawnEntry::ConfusionScroll
-                => confusion_scroll(ecs, spawn.0.0, spawn.0.1),
-            SpawnEntry::FireballScroll
-                => fireball_scroll(ecs, spawn.0.0, spawn.0.1),
+                => healing_potion(ecs, x, y),
+            // SpawnEntry::ConfusionScroll
+            //     => confusion_scroll(ecs, spawn.0.0, spawn.0.1),
+            // SpawnEntry::FireballScroll
+            //     => fireball_scroll(ecs, spawn.0.0, spawn.0.1),
             SpawnEntry::TeleportScroll
-                => teleport_scroll(ecs, spawn.0.0, spawn.0.1),
+                => teleport_scroll(ecs, x, y),
+            SpawnEntry::LingeringPotion
+                => lingering_potion(ecs, x, y),
+            SpawnEntry::HarmingPotion
+                => harm_potion(ecs, x, y),
+            SpawnEntry::ExplosionPotion
+                => explosion_potion(ecs, x, y),
             SpawnEntry::None
                 => {},
         }
@@ -192,12 +199,12 @@ fn teleport_scroll(ecs: &mut World, x: i32, y: i32) {
         .create_entity()
         .with(Position {x, y})
         .with(Renderable {
-            glyph: rltk::to_cp437('?'),
+            glyph: rltk::to_cp437('¡'),
             fg: RGB::named(rltk::VIOLET),
             bg: RGB::named(rltk::BLACK),
             render_order: 2
         })
-        .with(Name { name: "Scroll of teleportation".to_string()})
+        .with(Name { name: "Potion of Teleportation".to_string()})
         .with(Item {})
         .with(Consumable {})
         .with(Teleport { safe })
@@ -205,15 +212,106 @@ fn teleport_scroll(ecs: &mut World, x: i32, y: i32) {
         .build();
 }
 
+fn lingering_potion(ecs: &mut World, x: i32, y: i32) {
+    let name: &str;
+    let color: (u8, u8, u8);
+    let etype: LingerType;
+    {
+        let mut rng = ecs.fetch_mut::<RandomNumberGenerator>();
+        etype = match rng.roll_dice(1, 2) {
+            1 => {
+                name = "Potion of Fire";
+                color = rltk::RED;
+                LingerType::Fire
+            }, 
+            _ => {
+                name = "Potion of Poison";
+                color = rltk::GREEN;
+                LingerType::Poison
+            }
+        };
+    }
+
+    ecs
+        .create_entity()
+        .with(Position {x, y})
+        .with(Renderable {
+            glyph: rltk::to_cp437('¡'),
+            fg: RGB::named(color),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2
+        })
+        .with(Name { name: name.to_string() })
+        .with(Item {})
+        .with(Consumable {})
+        .with(LingeringEffect { etype, duration: 5, dmg: 3 })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+fn harm_potion(ecs: &mut World, x: i32, y: i32) {
+    ecs
+        .create_entity()
+        .with(Position {x, y})
+        .with(Renderable {
+            glyph: rltk::to_cp437('¡'),
+            fg: RGB::named(rltk::DARKRED),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2
+        })
+        .with(Name { name: "Potion of Harm".to_string() })
+        .with(Item {})
+        .with(Consumable {})
+        .with(InstantHarm { dmg: 7 })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+fn explosion_potion(ecs: &mut World, x: i32, y: i32) {
+    ecs
+        .create_entity()
+        .with(Position {x, y})
+        .with(Renderable {
+            glyph: rltk::to_cp437('¡'),
+            fg: RGB::named(rltk::ORANGE),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2
+        })
+        .with(Name { name: "Potion of Explosion".to_string() })
+        .with(Item {})
+        .with(Consumable {})
+        .with(Explosion { maxdmg: 10, radius: 4 })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
 fn room_table(map_depth: i32) -> RandomTable {
+    #[cfg(debug_assertions)]
+    return RandomTable::new()
+                // Enemies
+                .add(SpawnEntry::Goblin, 20 + map_depth)
+                .add(SpawnEntry::Ork, 1 + map_depth)
+                // Items
+                .add(SpawnEntry::HealingPotion, 7)
+                .add(SpawnEntry::LingeringPotion, 20 + map_depth)
+                .add(SpawnEntry::HarmingPotion, 20 + map_depth)
+                .add(SpawnEntry::ExplosionPotion, 20 + map_depth / 2)
+                // .add(SpawnEntry::FireballScroll, 2 + map_depth)
+                // .add(SpawnEntry::ConfusionScroll, 2 + map_depth)
+                .add(SpawnEntry::TeleportScroll, 2);
+                // .add(SpawnEntry::MissileScroll, 4)
+    #[cfg(not(debug_assertions))]
     RandomTable::new()
                 // Enemies
                 .add(SpawnEntry::Goblin, 12)
                 .add(SpawnEntry::Ork, 1 + map_depth)
                 // Items
                 .add(SpawnEntry::HealingPotion, 7)
-                .add(SpawnEntry::FireballScroll, 2 + map_depth)
-                .add(SpawnEntry::ConfusionScroll, 2 + map_depth)
+                .add(SpawnEntry::LingeringPotion, 2 + map_depth)
+                .add(SpawnEntry::HarmingPotion, 4 + map_depth)
+                .add(SpawnEntry::ExplosionPotion, 1 + map_depth / 2)
+                // .add(SpawnEntry::FireballScroll, 2 + map_depth)
+                // .add(SpawnEntry::ConfusionScroll, 2 + map_depth)
                 .add(SpawnEntry::TeleportScroll, 2)
-                .add(SpawnEntry::MissileScroll, 4)
+                // .add(SpawnEntry::MissileScroll, 4)
 }

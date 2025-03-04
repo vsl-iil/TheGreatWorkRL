@@ -6,10 +6,13 @@ pub enum SpawnEntry {
     Goblin,
     Ork,
     HealingPotion,
-    FireballScroll,
-    ConfusionScroll,
+    // FireballScroll,
+    // ConfusionScroll,
     TeleportScroll,
-    MissileScroll,
+    // MissileScroll,
+    LingeringPotion,
+    HarmingPotion,
+    ExplosionPotion
 }
 
 pub struct RandomEntry {

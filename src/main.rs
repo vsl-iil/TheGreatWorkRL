@@ -155,18 +155,30 @@ impl GameState for State {
                                 // Создаём лужу
                                 let heal;
                                 let tp;
+                                let linger;
+                                let harm;
+                                let boom;
                                 {
                                     let healing = self.ecs.read_storage::<ProvidesHealing>();
                                     let teleporting = self.ecs.read_storage::<Teleport>();
+                                    let lingering = self.ecs.read_storage::<LingeringEffect>();
+                                    let harming = self.ecs.read_storage::<InstantHarm>();
+                                    let exploding = self.ecs.read_storage::<Explosion>();
 
                                     heal = healing.get(item).map(|n| *n);
                                     tp = teleporting.get(item).map(|n| *n);
+                                    linger = lingering.get(item).map(|n| *n);
+                                    harm = harming.get(item).map(|n| *n);
+                                    boom = exploding.get(item).map(|n| *n);
                                 }
 
                                 let mut puddle = self.ecs.create_entity();
 
                                 puddle = puddle.maybe_with(heal);
                                 puddle = puddle.maybe_with(tp);
+                                puddle = puddle.maybe_with(linger);
+                                puddle = puddle.maybe_with(harm);
+                                puddle = puddle.maybe_with(boom);
 
                                 puddle = puddle
                                 .with(Renderable {
@@ -265,8 +277,6 @@ impl State {
         drop.run_now(&self.ecs);
         let mut throw = ItemThrowSystem {};
         throw.run_now(&self.ecs);
-        let mut stain = StainEffect {};
-        stain.run_now(&self.ecs);
 
         let runstate;
         {
@@ -276,6 +286,8 @@ impl State {
         if runstate == RunState::PlayerTurn {
             let mut trap = TrapSystem {};
             trap.run_now(&self.ecs);
+            let mut stain = StainEffect {};
+            stain.run_now(&self.ecs);
         }
 
         self.ecs.maintain();
@@ -412,9 +424,11 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Agitated>();
     gs.ecs.register::<Teleport>();
     gs.ecs.register::<Weight>();
-    gs.ecs.register::<Stained>();
     gs.ecs.register::<Puddle>();
     gs.ecs.register::<WantsToThrowItem>();
+    gs.ecs.register::<LingeringEffect>();
+    gs.ecs.register::<InstantHarm>();
+    gs.ecs.register::<Explosion>();
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();
 

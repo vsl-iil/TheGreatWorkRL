@@ -52,7 +52,7 @@ fn try_move_player(dx: i32, dy: i32, ecs: &mut World) {
             let mut ppos = ecs.write_resource::<Point>();
             ppos.x = pos.x;
             ppos.y = pos.y;
-        }
+        } 
     }
 }
 
@@ -80,6 +80,8 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Period => {
                 if try_next_level(&gs.ecs) {
                     return RunState::NextLevel;
+                } else {
+                    return RunState::AwaitingInput;
                 }
             }
             VirtualKeyCode::Numpad5 | VirtualKeyCode::Space

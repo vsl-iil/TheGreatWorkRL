@@ -87,9 +87,6 @@ pub struct Puddle {
 // ---=== Эффекты мобов / эффекты зелий ===---
 //
 
-#[derive(Component, Serialize, Deserialize, Clone, Debug)]
-pub struct Stained {}
-
 #[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
 pub struct ProvidesHealing {
     pub heal_amount: i32,
@@ -101,6 +98,32 @@ pub struct ProvidesHealing {
 pub struct Teleport {
     pub safe: bool
 }
+
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq)]
+pub enum LingerType { Fire, Poison }
+
+// Продолжительный наносящий урон эффект (огонь, отравление)
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+pub struct LingeringEffect {
+    pub etype: LingerType,
+    pub duration: i32,
+    pub dmg: i32
+}
+
+// Моментальный урон. Имеет особое взаимодействие с зельем лечения...
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+pub struct InstantHarm {
+    pub dmg: i32,
+}
+
+// Boom!
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+pub struct Explosion {
+    pub maxdmg: i32,
+    pub radius: i32
+}
+
+// TODO polymorph???
 
 // ============================================
 

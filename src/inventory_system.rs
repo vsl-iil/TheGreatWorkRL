@@ -1,7 +1,7 @@
 use rltk::{Point, RandomNumberGenerator};
 use specs::prelude::*;
 
-use crate::{components::{AreaOfEffect, CombatStats, Confusion, Consumable, InBackpack, InflictsDamage, Name, Position, ProvidesHealing, Stained, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem}, gamelog::GameLog, map::Map};
+use crate::{components::{Agitated, AreaOfEffect, CombatStats, Confusion, Consumable, Explosion, InBackpack, InflictsDamage, InstantHarm, LingeringEffect, Name, Position, ProvidesHealing, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem, Weight}, gamelog::GameLog, map::Map};
 
 pub struct InventorySystem {}
 
@@ -245,17 +245,22 @@ impl<'a> System<'a> for ItemThrowSystem {
     type SystemData = ( //ReadExpect<'a, Entity>,
                         Entities<'a>,
                         WriteStorage<'a, WantsToThrowItem>,
-                        WriteStorage<'a, Stained>,
                         WriteExpect<'a, Map>,
                         WriteStorage<'a, InBackpack>,
                         WriteStorage<'a, Position>,
+                        WriteStorage<'a, SufferDamage>,
+                        ReadStorage<'a, Weight>,
+                        WriteStorage<'a, Agitated>,
                         // эффекты
                         WriteStorage<'a, ProvidesHealing>,
-                        WriteStorage<'a, Teleport>
+                        WriteStorage<'a, Teleport>,
+                        WriteStorage<'a, LingeringEffect>,
+                        WriteStorage<'a, InstantHarm>,
+                        WriteStorage<'a, Explosion>
                     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, mut intentthrow, mut stain, map, mut backpack, mut pos,   mut healing, mut teleport) = data;
+        let (entities, mut intentthrow, map, mut backpack, mut pos, mut suffer, weight, mut agitate,   mut healing, mut teleport, mut linger, mut harm, mut explosion) = data;
 
         for to_throw in (&mut intentthrow).join() {
             let Point {x, y} = to_throw.target;
@@ -263,28 +268,48 @@ impl<'a> System<'a> for ItemThrowSystem {
             let mut is_inflictor = false;
             for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                 // INFLICTS
-                // Список эффектов: ProvidesHealing, Teleport, 
+                // Список эффектов: ProvidesHealing, Teleport, Lingering, Harm, Explosion
 
-                let mut inflicts_effect = false;
                 // Heal
                 if let Some(heal) = healing.get(to_throw.item) {
                     // let heal_amount = heal.heal_amount;
                     healing.insert(*mob, *heal).expect("Unable to apply healing inflict to entity");
-                    inflicts_effect = true;
+                    is_inflictor = true;
                 }
 
                 // Teleport
                 if let Some(tp) = teleport.get(to_throw.item) {
                     teleport.insert(*mob, *tp).expect("Unable to apply teleport inflict to entity");
-                    inflicts_effect = true;
-                }
-
-                if inflicts_effect {
-                    stain.insert(*mob, Stained {}).expect("Unable to stain entity");
                     is_inflictor = true;
                 }
+
+                // Lingering
+                if let Some(lingering) = linger.get(to_throw.item) {
+                    linger.insert(*mob, *lingering).expect("Unable to apply lingering inflict to entity");
+                    is_inflictor = true;
+                }
+
+                // Instant damage
+                if let Some(dmg) = harm.get(to_throw.item) {
+                    harm.insert(*mob, *dmg).expect("Unable to apply harm inflict to entity");
+                    is_inflictor = true;
+                }
+
+                // Explosion
+                if let Some(boom) = explosion.get(to_throw.item) {
+                    explosion.insert(*mob, *boom).expect("Unable to apply explosion inflict to entity");
+                    is_inflictor = true;
+                }
+
+                // Эй, кто в меня кинул?!
+                agitate.insert(*mob, Agitated { turns: 2 }).expect("Unable to agitate enemy after throw.");
             }
             
+            // damage based on weight
+            if let Some(target) = map.tile_content[map.xy_idx(x, y)].first() {
+                SufferDamage::new_damage(&mut suffer, *target, weight.get(to_throw.item).map_or(2, |w| w.0 * 2));
+            }
+
             if is_inflictor {
                 entities.delete(to_throw.item).expect("Unable to delete thrown entity");
             } else {

@@ -1,22 +1,25 @@
 use specs::prelude::*;
 
-use crate::{components::{Position, ProvidesHealing, Puddle, Stained, Teleport}, map::Map};
+use crate::{components::{Explosion, InstantHarm, LingeringEffect, Position, ProvidesHealing, Puddle, Teleport}, map::Map};
 
 pub struct TrapSystem {}
 
 impl<'a> System<'a> for TrapSystem {
+    #[allow(clippy::type_complexity)]
     type SystemData = (WriteStorage<'a, Puddle>,
-                    //    ReadExpect<'a, Entity>,
                        Entities<'a>,
                        ReadStorage<'a, Position>,
                        WriteExpect<'a, Map>,
-                       WriteStorage<'a, Stained>,
                     
                        WriteStorage<'a, ProvidesHealing>,
-                       WriteStorage<'a, Teleport>);
+                       WriteStorage<'a, Teleport>,
+                       WriteStorage<'a, LingeringEffect>,
+                       WriteStorage<'a, InstantHarm>,
+                       WriteStorage<'a, Explosion>
+                       );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut puddles, entities, pos, map, mut stained, mut heal, mut tp) = data;
+        let (mut puddles, entities, pos, map, mut heal, mut tp, mut linger, mut harm, mut explode) = data;
 
         for(ent, puddle, pos) in (&entities, &mut puddles, &pos).join() {
             puddle.lifetime -= 1;
@@ -30,6 +33,7 @@ impl<'a> System<'a> for TrapSystem {
                         heal.insert(*mob, *healing).expect("Unable to insert heal inflict on entity");
                     }
                 }
+
                 // Teleport
                 if let Some(teleporting) = tp.get(ent) {
                     if tp.get(*mob).is_none() {
@@ -37,8 +41,25 @@ impl<'a> System<'a> for TrapSystem {
                     }
                 }
 
-                if stained.get(*mob).is_none() {
-                    stained.insert(*mob, Stained {}).expect("Unable to puddle stain entity");
+                // Lingering
+                if let Some(lingering) = linger.get(ent) {
+                    if linger.get(*mob).is_none() {
+                        linger.insert(*mob, *lingering).expect("Unable to insert lingering inflict on entity");
+                    }
+                }
+
+                // Instant harm
+                if let Some(harming) = harm.get(ent) {
+                    if harm.get(*mob).is_none() {
+                        harm.insert(*mob, *harming).expect("Unable to insert harm inflict on entity");
+                    }
+                }
+
+                // Exploding
+                if let Some(exploding) = explode.get(ent) {
+                    if explode.get(*mob).is_none() {
+                        explode.insert(*mob, *exploding).expect("Unable to insert explosion inflict on entity");
+                    }
                 }
             }
             if puddle.lifetime == 0 {

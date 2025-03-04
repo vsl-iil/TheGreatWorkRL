@@ -58,7 +58,8 @@ pub fn save_game(ecs: &mut World) {
         serialize_individually!(ecs, serializer, data, Position, Renderable, Player, Viewshed, Monster, 
             Name, BlocksTile, CombatStats, SufferDamage, WantsToMelee, Item, Consumable, Ranged, InflictsDamage, 
             AreaOfEffect, Confusion, ProvidesHealing, InBackpack, WantsToPickupItem, WantsToUseItem,
-            WantsToDropItem, WantsToThrowItem, Weight, Stained, Teleport, SerializationHelper);
+            WantsToDropItem, WantsToThrowItem, Weight, Teleport, LingeringEffect, InstantHarm, 
+            Explosion, SerializationHelper);
     }
 
     ecs.delete_entity(savehelper).expect("Crash on cleanup");
@@ -88,7 +89,8 @@ pub fn load_game(ecs: &mut World) {
         deserialize_individually!(ecs, de, d, Position, Renderable, Player, Viewshed, Monster, 
             Name, BlocksTile, CombatStats, SufferDamage, WantsToMelee, Item, Consumable, Ranged, InflictsDamage, 
             AreaOfEffect, Confusion, ProvidesHealing, InBackpack, WantsToPickupItem, WantsToUseItem,
-            WantsToDropItem, WantsToThrowItem, Weight, Teleport, Stained, SerializationHelper
+            WantsToDropItem, WantsToThrowItem, Weight, Teleport, LingeringEffect, InstantHarm, 
+            Explosion, SerializationHelper
         );
     }
 
