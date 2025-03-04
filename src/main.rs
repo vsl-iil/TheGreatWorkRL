@@ -158,18 +158,27 @@ impl GameState for State {
                                 let linger;
                                 let harm;
                                 let boom;
+                                let confuse;
                                 {
                                     let healing = self.ecs.read_storage::<ProvidesHealing>();
                                     let teleporting = self.ecs.read_storage::<Teleport>();
                                     let lingering = self.ecs.read_storage::<LingeringEffect>();
                                     let harming = self.ecs.read_storage::<InstantHarm>();
                                     let exploding = self.ecs.read_storage::<Explosion>();
+                                    let confusing = self.ecs.read_storage::<Confusion>();
 
                                     heal = healing.get(item).map(|n| *n);
                                     tp = teleporting.get(item).map(|n| *n);
                                     linger = lingering.get(item).map(|n| *n);
                                     harm = harming.get(item).map(|n| *n);
                                     boom = exploding.get(item).map(|n| *n);
+                                    confuse = confusing.get(item).map(|n| *n);
+                                }
+
+                                let color;
+                                {
+                                    let renders = self.ecs.read_storage::<Renderable>();
+                                    color = renders.get(item).map_or(rltk::RGB::named(rltk::GREEN), |c| c.fg);
                                 }
 
                                 let mut puddle = self.ecs.create_entity();
@@ -179,12 +188,13 @@ impl GameState for State {
                                 puddle = puddle.maybe_with(linger);
                                 puddle = puddle.maybe_with(harm);
                                 puddle = puddle.maybe_with(boom);
+                                puddle = puddle.maybe_with(confuse);
 
                                 puddle = puddle
                                 .with(Renderable {
                                     glyph: rltk::to_cp437(' '),
                                     fg: rltk::RGB::named(rltk::BLACK),
-                                    bg: rltk::RGB::named(rltk::GREEN),
+                                    bg: color,
                                     render_order: 10
                                 })
                                 .with(Puddle { lifetime: 3 })
@@ -425,6 +435,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Teleport>();
     gs.ecs.register::<Weight>();
     gs.ecs.register::<Puddle>();
+    gs.ecs.register::<Potion>();
     gs.ecs.register::<WantsToThrowItem>();
     gs.ecs.register::<LingeringEffect>();
     gs.ecs.register::<InstantHarm>();

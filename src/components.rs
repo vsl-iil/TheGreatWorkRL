@@ -13,7 +13,7 @@ pub struct Position {
     pub y: i32,
 }
 
-#[derive(Component, ConvertSaveload, Clone)]
+#[derive(Component, ConvertSaveload, Clone, Debug)]
 pub struct Renderable {
     pub glyph: rltk::FontCharType,
     pub fg: RGB,
@@ -83,6 +83,8 @@ pub struct Puddle {
     pub lifetime: i32 
 }
 
+#[derive(Component, Serialize, Deserialize, Clone, Debug)]
+pub struct Potion {}
 //
 // ---=== Эффекты мобов / эффекты зелий ===---
 //
@@ -170,7 +172,7 @@ pub struct AreaOfEffect {
     pub radius: i32
 }
 
-#[derive(Component, Debug, ConvertSaveload, Clone)]
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
 pub struct Confusion {
     pub turns: i32
 }

@@ -95,9 +95,9 @@ impl<'a> System<'a> for ItemUseSystem {
                 for target in targets.iter() {
                     let stats = combat_stats.get_mut(*target);
                     if let Some(stats) = stats {
-                        stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount);
+                        stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount*3);
                         if entity == *player_entity {
-                            gamelog.entries.push(format!("You used the {}, healing {} hp.", names.get(usable.item).unwrap().name, healer.heal_amount));
+                            gamelog.entries.push(format!("You used the {}, healing {} hp.", names.get(usable.item).unwrap().name, healer.heal_amount*3));
                         }
                     }
                 }
@@ -256,11 +256,12 @@ impl<'a> System<'a> for ItemThrowSystem {
                         WriteStorage<'a, Teleport>,
                         WriteStorage<'a, LingeringEffect>,
                         WriteStorage<'a, InstantHarm>,
-                        WriteStorage<'a, Explosion>
+                        WriteStorage<'a, Explosion>,
+                        WriteStorage<'a, Confusion>
                     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, mut intentthrow, map, mut backpack, mut pos, mut suffer, weight, mut agitate,   mut healing, mut teleport, mut linger, mut harm, mut explosion) = data;
+        let (entities, mut intentthrow, map, mut backpack, mut pos, mut suffer, weight, mut agitate,   mut healing, mut teleport, mut linger, mut harm, mut explosion, mut confusion) = data;
 
         for to_throw in (&mut intentthrow).join() {
             let Point {x, y} = to_throw.target;
@@ -298,6 +299,12 @@ impl<'a> System<'a> for ItemThrowSystem {
                 // Explosion
                 if let Some(boom) = explosion.get(to_throw.item) {
                     explosion.insert(*mob, *boom).expect("Unable to apply explosion inflict to entity");
+                    is_inflictor = true;
+                }
+
+                // Confusion
+                if let Some(confuse) = confusion.get(to_throw.item) {
+                    confusion.insert(*mob, *confuse).expect("Unable to confuse entity");
                     is_inflictor = true;
                 }
 

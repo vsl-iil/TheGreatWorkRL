@@ -3,7 +3,7 @@ use std::i32;
 use rltk::{Point, RandomNumberGenerator};
 use specs::prelude::*;
 
-use crate::{components::{CombatStats, Explosion, InstantHarm, LingerType, LingeringEffect, Name, Position, ProvidesHealing, Puddle, SufferDamage, Teleport, Viewshed}, gamelog::GameLog, map::Map};
+use crate::{components::{CombatStats, Explosion, InstantHarm, LingerType, LingeringEffect, Name, Position, Potion, ProvidesHealing, Puddle, SufferDamage, Teleport, Viewshed}, gamelog::GameLog, map::Map};
 
 pub struct StainEffect {}
 
@@ -23,6 +23,7 @@ impl<'a> System<'a> for StainEffect {
                         WriteStorage<'a, SufferDamage>,
                         WriteExpect<'a, Point>,
                         ReadExpect<'a, Entity>,
+                        ReadStorage<'a, Potion>,
 
                         WriteStorage<'a, ProvidesHealing>,
                         WriteStorage<'a, Teleport>,
@@ -32,7 +33,7 @@ impl<'a> System<'a> for StainEffect {
                       );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut combat, puddle, entities, mut rng, mut map, mut pos, mut viewsheds, mut log, names, mut suffer, mut playerpos, player_entity,   mut heal, mut teleport, mut linger, mut harm, mut explosion) = data;
+        let (mut combat, puddle, entities, mut rng, mut map, mut pos, mut viewsheds, mut log, names, mut suffer, mut playerpos, player_entity, potions,   mut heal, mut teleport, mut linger, mut harm, mut explosion) = data;
 
         for (ents, stat, _puddle) in (&entities, &mut combat, !&puddle).join() {
             // INFLICTS
@@ -81,7 +82,6 @@ impl<'a> System<'a> for StainEffect {
                 }
 
                 if duration == 0 {
-                    dbg!("Отмучался");
                     linger.remove(ents);
                 } 
 
@@ -115,6 +115,10 @@ impl<'a> System<'a> for StainEffect {
                             ).round().clamp(1.0, 999.0);
                             let dmg = exploding.maxdmg / (2.0f32 * distance) as i32;
                             SufferDamage::new_damage(&mut suffer, *mob, dmg);
+
+                            if potions.get(*mob).is_some() && rng.roll_dice(1, 2) == 1 {
+                                // entities.build_entity().with(c, storage)
+                            }
                         }
                     }
                 }
