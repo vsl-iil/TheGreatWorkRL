@@ -27,12 +27,13 @@ impl<'a> System<'a> for InventorySystem {
             if pickup.collected_by == *player_entity {
                 if boss.get(pickup.item).is_some() {
                     log.entries.push("You obtained the Philosopher's Stone!".to_owned());
+                } else {
+                    let mut log_name = "something";
+                    if let Some(item_name) = name.get(pickup.item) {
+                        log_name = &item_name.name;
+                    }
+                    log.entries.push(format!("You picked up {}.", log_name));
                 }
-                let mut log_name = "something";
-                if let Some(item_name) = name.get(pickup.item) {
-                    log_name = &item_name.name;
-                }
-                log.entries.push(format!("You picked up {}.", log_name));
             }
         }
 

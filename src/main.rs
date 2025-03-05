@@ -5,7 +5,7 @@ use inventory_system::{InventorySystem, ItemDropSystem, ItemThrowSystem, ItemUse
 use map_indexing_system::MapIndexingSystem;
 use melee_combat_system::MeleeCombatSystem;
 use monster_ai_system::MonsterAI;
-use rltk::{GameState, Point, Rltk};
+use rltk::{GameState, Point, RandomNumberGenerator, Rltk};
 use specs::prelude::*;
 use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
 
@@ -181,26 +181,42 @@ impl GameState for State {
                                     color = renders.get(item).map_or(rltk::RGB::named(rltk::GREEN), |c| c.fg);
                                 }
 
-                                let mut puddle = self.ecs.create_entity();
+                                let mut random_coords: Vec<(i32, i32)> = vec![(0, 0)];
+                                {
+                                    let mut rng = self.ecs.fetch_mut::<RandomNumberGenerator>();
+                                    let all_combinations = (-1..=1).flat_map(|x| (1..=1).map(move |y| (x, y))).collect::<Vec<(i32, i32)>>();
+                                    for i in 0..rng.roll_dice(1, 4)+2 {
+                                        let choice = rng.random_slice_index(&all_combinations);
+                                        if choice.is_none() { break; }
+                                        random_coords.push(*all_combinations.get(choice.unwrap()).unwrap());
+                                    }
+                                }
+                                
+                                for (dx, dy) in random_coords {
+                                    let mut puddle = self.ecs.create_entity();
 
-                                puddle = puddle.maybe_with(heal);
-                                puddle = puddle.maybe_with(tp);
-                                puddle = puddle.maybe_with(linger);
-                                puddle = puddle.maybe_with(harm);
-                                puddle = puddle.maybe_with(boom);
-                                puddle = puddle.maybe_with(confuse);
+                                    puddle = puddle.maybe_with(heal);
+                                    puddle = puddle.maybe_with(tp);
+                                    puddle = puddle.maybe_with(linger);
+                                    puddle = puddle.maybe_with(harm);
+                                    puddle = puddle.maybe_with(boom);
+                                    puddle = puddle.maybe_with(confuse);
 
-                                puddle = puddle
-                                .with(Renderable {
-                                    glyph: rltk::to_cp437(' '),
-                                    fg: rltk::RGB::named(rltk::BLACK),
-                                    bg: color,
-                                    render_order: 10
-                                })
-                                .with(Puddle { lifetime: 3 })
-                                .with(Position {x: target.1.unwrap().x, y: target.1.unwrap().y });
-
-                                puddle.build();
+                                    puddle = puddle
+                                    .with(Renderable {
+                                        glyph: rltk::to_cp437(' '),
+                                        fg: rltk::RGB::named(rltk::BLACK),
+                                        bg: color.clone(),
+                                        render_order: 10
+                                    })
+                                    .with(Puddle { lifetime: 3 })
+                                    .with(Position {
+                                        x: target.1.unwrap().x + dx, 
+                                        y: target.1.unwrap().y + dy 
+                                    });
+                                    
+                                    puddle.build();
+                                }
                                 // Лужа готова
                             }
                             newrunstate = RunState::PlayerTurn;
