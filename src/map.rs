@@ -8,12 +8,19 @@ use std::cmp::{min, max};
 pub const MAPWIDTH:  usize = 80;
 pub const MAPHEIGHT: usize = 43;
 pub const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
+#[cfg(not(debug_assertions))]
+pub const LEVELNUM: i32 = 8;
+#[cfg(debug_assertions)]
+pub const LEVELNUM: i32 = 2;
 
-#[derive(PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum TileType {
     Wall,
     Floor,
-    DownStairs
+    DownStairs,
+    BossSpawner,
+    FinalDoor,
+    MacGuffinSpawner
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -53,10 +60,16 @@ impl Map {
         };
 
         const MAX_ROOMS: i32 = 30;
-        const MIN_SIZE: i32 = 6;
+        const MIN_SIZE: i32 = 7;
         const MAX_SIZE: i32 = 10;
 
         let mut rng = RandomNumberGenerator::new();
+
+        if new_depth == LEVELNUM {
+            map.final_level(&mut rng);
+
+            return map;
+        }
 
         for _ in 0..MAX_ROOMS {
             let w = rng.range(MIN_SIZE, MAX_SIZE);
@@ -102,12 +115,35 @@ impl Map {
         map
     }
 
+    pub fn final_level(&mut self, rng: &mut RandomNumberGenerator) {
+        let x = rng.roll_dice(1, (MAPWIDTH-33) as i32);
+        let y = rng.roll_dice(1, (MAPHEIGHT-16) as i32);
+
+        self.apply_final_lab(x, y);
+
+        self.rooms.push(Rect { x1: x, x2: x+15, y1: y, y2: y+15 });
+    }
+
     pub fn apply_room_to_map(&mut self, room: &Rect) {
         for y in room.y1+1..=room.y2 {
             for x in room.x1+1..=room.x2 {
                 let idx = self.xy_idx(x, y);
                 self.tiles[idx] = TileType::Floor;
             }
+        }
+    }
+
+    pub fn apply_final_lab(&mut self, x: i32, y: i32) {
+        let room_bytes = include_bytes!("../room.bin");
+        for (i, b) in room_bytes.iter().enumerate() {
+            let idx = self.xy_idx(x + (i % 32) as i32, y + (i / 32) as i32);
+            self.tiles[idx] = match b {
+                1 => TileType::Wall,
+                2 => TileType::BossSpawner,
+                3 => TileType::FinalDoor,
+                4 => TileType::MacGuffinSpawner,
+                _ => TileType::Floor,
+            };
         }
     }
 
@@ -141,7 +177,7 @@ impl Map {
 
     pub fn populate_blocked(&mut self) {
         for (i, tile) in self.tiles.iter().enumerate() {
-            self.blocked[i] = *tile == TileType::Wall;
+            self.blocked[i] = *tile == TileType::Wall || *tile == TileType::FinalDoor;
         }
     }
 
@@ -174,6 +210,18 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
                 TileType::DownStairs => {
                     glyph = rltk::to_cp437('>');
                     fg = RGB::from_f32(0.8, 0.8, 0.95);
+                },
+                TileType::BossSpawner => {
+                    glyph = rltk::to_cp437('A');
+                    fg = RGB::from_f32(1.0, 1.0, 1.0);
+                },
+                TileType::FinalDoor => {
+                    glyph = rltk::to_cp437('|');
+                    fg = RGB::named(rltk::BROWN4);
+                },
+                TileType::MacGuffinSpawner => {
+                    glyph = rltk::to_cp437('☼');
+                    fg = RGB::named(rltk::GOLD);
                 }
             }
             if !map.visible_tiles[idx] { 
@@ -204,7 +252,7 @@ impl Algorithm2D for Map {
 
 impl BaseMap for Map {
     fn is_opaque(&self, idx: usize) -> bool {
-        self.tiles[idx] == TileType::Wall
+        self.tiles[idx] == TileType::Wall || self.tiles[idx] == TileType::FinalDoor
     }
 
     fn get_available_exits(&self, idx: usize) -> rltk::SmallVec<[(usize, f32); 10]> {

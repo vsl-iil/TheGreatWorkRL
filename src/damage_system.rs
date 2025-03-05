@@ -1,6 +1,6 @@
 use specs::prelude::*;
 
-use crate::{components::{CombatStats, Name, Player, SufferDamage}, gamelog::GameLog};
+use crate::{components::{Boss, CombatStats, Name, Player, SufferDamage}, gamelog::GameLog, map::{Map, TileType}};
 
 pub struct DamageSystem {}
 
@@ -23,8 +23,10 @@ impl<'a> System<'a> for DamageSystem {
 
 pub fn clean_up_dead(ecs: &mut World) {
     let mut dead: Vec<Entity> = vec![];
+    let mut is_boss_dead = false;
     {
         let names = ecs.read_storage::<Name>();
+        let boss = ecs.read_storage::<Boss>();
         
         let combat_stats = ecs.read_storage::<CombatStats>();
         let players = ecs.read_storage::<Player>();
@@ -35,8 +37,11 @@ pub fn clean_up_dead(ecs: &mut World) {
                 let player = players.get(entity);
                 match player {
                     None => { 
-                        if let Some(victim_name) = names.get(entity) {
-                            log.entries.push(format!("{} dies!", &victim_name.name));
+                        is_boss_dead = boss.get(entity).is_some();
+                        if !is_boss_dead {
+                            if let Some(victim_name) = names.get(entity) {
+                                log.entries.push(format!("{} dies!", &victim_name.name));
+                            }
                         }
                         dead.push(entity);
                     },
@@ -51,7 +56,27 @@ pub fn clean_up_dead(ecs: &mut World) {
         }
     }
 
+    if is_boss_dead { boss_dead(ecs) }
+
     for victim in dead {
         ecs.delete_entity(victim).expect("Unable to delete dead entity");
     }
+}
+
+pub fn boss_dead(ecs: &mut World) {
+    {
+        let mut map = ecs.write_resource::<Map>();
+        
+        for tile in map.tiles.iter_mut() {
+            if *tile == TileType::FinalDoor {
+                *tile = TileType::Floor;
+            }
+        }
+    }
+    let mut log = ecs.write_resource::<GameLog>();
+    log.entries.push(String::new());
+    log.entries.push("\"You are a fool... You'll never leave...\"".to_owned());
+    log.entries.push("The Cursed Alchemist dies!".to_owned());
+    log.entries.push("You hear a rumbling sound; the door to the chamber opens!".to_owned());
+    
 }

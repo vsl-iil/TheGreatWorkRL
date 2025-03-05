@@ -34,6 +34,9 @@ pub struct Player {}
 #[derive(Component, Serialize, Deserialize, Clone, Debug)]
 pub struct Monster {}
 
+#[derive(Component, Serialize, Deserialize, Clone, Debug)]
+pub struct Boss {}
+
 #[derive(Component, ConvertSaveload, Clone)]
 pub struct Name {
     pub name: String

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rltk::{RandomNumberGenerator, RGB};
 use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
 
-use crate::{components::{AreaOfEffect, BlocksTile, CombatStats, Confusion, Consumable, Explosion, InflictsDamage, InstantHarm, Item, LingerType, LingeringEffect, Monster, Name, Player, Position, Potion, ProvidesHealing, Ranged, Renderable, SerializeMe, Teleport, Viewshed}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
+use crate::{components::{BlocksTile, Boss, CombatStats, Confusion, Consumable, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Monster, Name, Player, Position, Potion, ProvidesHealing, Renderable, SerializeMe, Teleport, Viewshed}, map::{self, Map, TileType, MAPWIDTH}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
 
 pub const MAX_MONSTERS: i32 = 4;
 
@@ -57,11 +57,71 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
         .build();
 }
 
-pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
-    let spawntable = room_table(map_depth);
+fn finalboss(ecs: &mut World, x: i32, y: i32) {
+    ecs
+        .create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: rltk::to_cp437('A'),
+            fg: RGB::named(rltk::VIOLET),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 1
+        })
+        .with(Viewshed { visible_tiles: vec![], range: 12, dirty: true })
+        .with(Monster {})
+        .with(Boss {})
+        .with(Name { name: "The Cursed Alchemist".to_string() })
+        .with(BlocksTile {})
+        .with(CombatStats {
+            max_hp: 100,
+            hp: 1,
+            defence: 2,
+            power: 12
+        })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+fn spawn_mcguffin(ecs: &mut World, x: i32, y: i32) {
+    ecs
+        .create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: rltk::to_cp437('☼'), 
+            fg: RGB::named(rltk::GOLD),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 2
+        })
+        .with(Item {})
+        .with(Boss {})
+        .with(Name { name: "The Philosopher's Stone".to_owned() })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+pub fn spawn_room(ecs: &mut World, room: &Rect, map: &mut Map, map_depth: i32) {
+    let spawntable; 
     let mut spawn_points: HashMap<(i32, i32), SpawnEntry> = HashMap::new();
+    let mut boss_coords = None;
+    let mut mcguffin_coords = None;
 
     {
+        if map_depth == map::LEVELNUM {
+            spawntable = boss_table();
+
+            for (i, tile) in map.tiles.iter_mut().enumerate() {
+                if *tile == TileType::BossSpawner {
+                    *tile = TileType::Floor;
+                    boss_coords = Some(((i % MAPWIDTH) as i32, (i / MAPWIDTH) as i32));
+                } else if *tile == TileType::MacGuffinSpawner {
+                    *tile = TileType::Floor;
+                    mcguffin_coords = Some(((i % MAPWIDTH) as i32, (i / MAPWIDTH) as i32));
+                }
+            }
+        } else {
+            spawntable = room_table(map_depth);
+        }
+
         let mut rng = ecs.write_resource::<RandomNumberGenerator>();
         let num_spawns = rng.roll_dice(1, MAX_MONSTERS + 3) + (map_depth - 1) - 3;
 
@@ -73,7 +133,7 @@ pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
                 let x = room.x1 + rng.roll_dice(1, i32::abs(room.x2 - room.x1));
                 let y = room.y1 + rng.roll_dice(1, i32::abs(room.y2 - room.y1));
 
-                if !spawn_points.contains_key(&(x, y)) {
+                if !spawn_points.contains_key(&(x, y)) && !map.blocked[map.xy_idx(x, y)] {
                     spawn_points.insert((x, y), spawntable.roll(&mut rng));
                     added = true;
                 }
@@ -81,6 +141,13 @@ pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
                 tries += 1;
             }
         }
+    }
+
+    if let Some((x, y)) = boss_coords {
+        finalboss(ecs, x, y);
+    }
+    if let Some((x, y)) = mcguffin_coords {
+        spawn_mcguffin(ecs, x, y);
     }
 
     for spawn in spawn_points.iter() {
@@ -321,4 +388,14 @@ fn room_table(map_depth: i32) -> RandomTable {
                 .add(SpawnEntry::ConfusionPotion, 2 + map_depth)
                 .add(SpawnEntry::TeleportPotion, 1 + map_depth / 2)
                 // .add(SpawnEntry::MissileScroll, 4)
+}
+
+fn boss_table() -> RandomTable {
+    RandomTable::new()
+                .add(SpawnEntry::HealingPotion, 5)
+                .add(SpawnEntry::LingeringPotion, 7)
+                .add(SpawnEntry::HarmingPotion, 10)
+                .add(SpawnEntry::ExplosionPotion, 3)
+                .add(SpawnEntry::ConfusionPotion, 5)
+                .add(SpawnEntry::TeleportPotion, 2)
 }

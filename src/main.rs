@@ -336,7 +336,7 @@ impl State {
         self.ecs.delete_entities(&to_delete).expect("Unable to delete entities");
 
         let new_depth;
-        let worldmap;
+        let mut worldmap;
         {
             let mut worldmap_res = self.ecs.write_resource::<Map>();
             new_depth = worldmap_res.depth + 1;
@@ -344,8 +344,13 @@ impl State {
             worldmap = worldmap_res.clone();
         }
 
-        for room in worldmap.rooms.iter() {
-            spawner::spawn_room(&mut self.ecs, room, new_depth);
+        for room in worldmap.rooms.clone().iter() {
+            spawner::spawn_room(&mut self.ecs, room, &mut worldmap, new_depth);
+        }
+
+        {   // Костыли мои костыли
+            let mut worldmap_res = self.ecs.write_resource::<Map>();
+            *worldmap_res = worldmap.clone();
         }
 
         let (player_x, player_y) = worldmap.rooms[0].center();
@@ -440,12 +445,13 @@ fn main() -> rltk::BError {
     gs.ecs.register::<LingeringEffect>();
     gs.ecs.register::<InstantHarm>();
     gs.ecs.register::<Explosion>();
+    gs.ecs.register::<Boss>();
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();
 
     gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
 
-    let map = Map::new_map_rooms_and_corridors(1);
+    let mut map = Map::new_map_rooms_and_corridors(1);
     let (player_x, player_y) = map.rooms[0].center();
     
     gs.ecs.insert(rltk::RandomNumberGenerator::new());
@@ -454,8 +460,8 @@ fn main() -> rltk::BError {
     let player_entity = spawner::player(&mut gs.ecs, player_x, player_y);
     gs.ecs.insert(player_entity);
 
-    for room in map.rooms.iter().skip(1) {
-        spawner::spawn_room(&mut gs.ecs, room, 1);
+    for room in map.rooms.clone().iter().skip(1) {
+        spawner::spawn_room(&mut gs.ecs, room, &mut map, 1);
     }
 
     gs.ecs.insert(map);

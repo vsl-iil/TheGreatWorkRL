@@ -1,7 +1,7 @@
 use rltk::{Point, RandomNumberGenerator};
 use specs::prelude::*;
 
-use crate::{components::{Agitated, AreaOfEffect, CombatStats, Confusion, Consumable, Explosion, InBackpack, InflictsDamage, InstantHarm, LingeringEffect, Name, Position, ProvidesHealing, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem, Weight}, gamelog::GameLog, map::Map};
+use crate::{components::{Agitated, AreaOfEffect, Boss, CombatStats, Confusion, Consumable, Explosion, InBackpack, InflictsDamage, InstantHarm, LingeringEffect, Name, Position, ProvidesHealing, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem, Weight}, gamelog::GameLog, map::Map};
 
 pub struct InventorySystem {}
 
@@ -12,17 +12,22 @@ impl<'a> System<'a> for InventorySystem {
                         WriteStorage<'a, WantsToPickupItem>,
                         WriteStorage<'a, Position>,
                         ReadStorage<'a, Name>,
-                        WriteStorage<'a, InBackpack>
+                        WriteStorage<'a, InBackpack>,
+                        ReadStorage<'a, Boss>,
+                        // WriteExpect<'a, Map>
                     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (player_entity, mut log, mut wants_pickup, mut pos, name, mut backpack) = data;
+        let (player_entity, mut log, mut wants_pickup, mut pos, name, mut backpack, boss) = data;
 
         for pickup in wants_pickup.join() {
             pos.remove(pickup.item);
             backpack.insert(pickup.item, InBackpack { owner: pickup.collected_by }).expect("Unable to insert backpack entry");
             
             if pickup.collected_by == *player_entity {
+                if boss.get(pickup.item).is_some() {
+                    log.entries.push("You obtained the Philosopher's Stone!".to_owned());
+                }
                 let mut log_name = "something";
                 if let Some(item_name) = name.get(pickup.item) {
                     log_name = &item_name.name;
