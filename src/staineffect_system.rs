@@ -69,8 +69,12 @@ impl<'a> System<'a> for StainEffect {
                             for adjent in map.tile_content[map.xy_idx(mobx+x, moby+y)].iter() {
                                 // 50% chance to burn
                                 if rng.roll_dice(1, 1) == 1 {
+                                    if *adjent == *player_entity {
+
+                                        dbg!("Burn, baby, burn!");
+                                    }
                                     linger.insert(*adjent, LingeringEffect { etype: LingerType::Fire, duration: 3, dmg })
-                                          .expect("Unable to insert lingering fire on adjacent entities");
+                                        .expect("Unable to insert lingering fire on adjacent entities");
                                 } 
                             }
                         }
