@@ -1,19 +1,30 @@
+use rltk::Point;
 use specs::prelude::*;
 
-use crate::{components::{Boss, CombatStats, Name, Player, SufferDamage}, gamelog::GameLog, map::{Map, TileType}};
+use crate::{components::{Boss, CombatStats, Name, Player, Position, Potion, SufferDamage, WantsToThrowItem}, gamelog::GameLog, map::{Map, TileType}};
 
 pub struct DamageSystem {}
 
 impl<'a> System<'a> for DamageSystem {
     type SystemData = ( WriteStorage<'a, CombatStats>,
-                        WriteStorage<'a, SufferDamage>);
+                        WriteStorage<'a, SufferDamage>,
+                        ReadStorage<'a, Potion>,
+                        WriteStorage<'a, WantsToThrowItem>,
+                        Entities<'a>,
+                        ReadStorage<'a, Position>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut stats, mut damage) = data;
+        let (mut stats, mut damage, potions, mut intentthrow, entities, pos) = data;
 
         for (stats, damage) in (&mut stats, &damage).join() {
             for dmg in damage.amount.iter() {
                 stats.hp = stats.hp.saturating_sub(*dmg);
+            }
+        }
+
+        for (e, _potion, damage, pos) in (&entities, &potions, &damage, &pos).join() {
+            if damage.amount.iter().sum::<i32>() >= 2 {
+                intentthrow.insert(e, WantsToThrowItem { item: e, target: Point {x: pos.x, y: pos.y } }).expect("Unable to shatter potion");
             }
         }
 
