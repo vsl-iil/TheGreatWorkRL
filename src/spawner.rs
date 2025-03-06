@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rltk::{RandomNumberGenerator, RGB};
 use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
 
-use crate::{components::{BlocksTile, Boss, CombatStats, Confusion, Consumable, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Monster, Name, Player, Position, Potion, ProvidesHealing, Renderable, SerializeMe, Teleport, Viewshed}, map::{self, Map, TileType, MAPWIDTH}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
+use crate::{components::{BlocksTile, Boss, CombatStats, Confusion, Consumable, Explosion, InstantHarm, Item, LingerType, LingeringEffect, MacGuffin, Monster, Name, Player, Position, Potion, ProvidesHealing, Renderable, SerializeMe, Teleport, Viewshed}, map::{self, Map, TileType, MAPWIDTH}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
 
 pub const MAX_MONSTERS: i32 = 4;
 
@@ -68,8 +68,8 @@ fn finalboss(ecs: &mut World, x: i32, y: i32) {
             render_order: 1
         })
         .with(Viewshed { visible_tiles: vec![], range: 12, dirty: true })
-        .with(Monster {})
-        .with(Boss {})
+        // .with(Monster {})
+        .with(Boss { state: crate::components::BossState::ThrowingPotions(6) })
         .with(Name { name: "The Cursed Alchemist".to_string() })
         .with(BlocksTile {})
         .with(CombatStats {
@@ -93,7 +93,7 @@ fn spawn_mcguffin(ecs: &mut World, x: i32, y: i32) {
             render_order: 2
         })
         .with(Item {})
-        .with(Boss {})
+        .with(MacGuffin {})
         .with(Name { name: "The Philosopher's Stone".to_owned() })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();

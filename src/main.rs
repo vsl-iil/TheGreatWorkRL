@@ -4,7 +4,7 @@ use gui::draw_ui;
 use inventory_system::{InventorySystem, ItemDropSystem, ItemThrowSystem, ItemUseSystem};
 use map_indexing_system::MapIndexingSystem;
 use melee_combat_system::MeleeCombatSystem;
-use monster_ai_system::MonsterAI;
+use monster_ai_system::{BossAI, MonsterAI};
 use rltk::{GameState, Point, RandomNumberGenerator, Rltk};
 use specs::prelude::*;
 use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
@@ -151,80 +151,6 @@ impl GameState for State {
                                     let mut intent = self.ecs.write_storage::<WantsToThrowItem>();
                                     intent.insert(*self.ecs.fetch::<Entity>(), WantsToThrowItem { item, target: target.1.unwrap() }).expect("Unable to insert throw intent");
                                 }
-                                // INFLICTS
-                                let is_potion;
-                                {
-                                    let potions = self.ecs.read_storage::<Potion>();
-                                    is_potion = potions.get(item).is_some();
-                                }
-                                if is_potion {
-                                    // Создаём лужу
-                                    let heal;
-                                    let tp;
-                                    let linger;
-                                    let harm;
-                                    let boom;
-                                    let confuse;
-                                    {
-                                        let healing = self.ecs.read_storage::<ProvidesHealing>();
-                                        let teleporting = self.ecs.read_storage::<Teleport>();
-                                        let lingering = self.ecs.read_storage::<LingeringEffect>();
-                                        let harming = self.ecs.read_storage::<InstantHarm>();
-                                        let exploding = self.ecs.read_storage::<Explosion>();
-                                        let confusing = self.ecs.read_storage::<Confusion>();
-
-                                        heal = healing.get(item).map(|n| *n);
-                                        tp = teleporting.get(item).map(|n| *n);
-                                        linger = lingering.get(item).map(|n| *n);
-                                        harm = harming.get(item).map(|n| *n);
-                                        boom = exploding.get(item).map(|n| *n);
-                                        confuse = confusing.get(item).map(|n| *n);
-                                    }
-
-                                    let color;
-                                    {
-                                        let renders = self.ecs.read_storage::<Renderable>();
-                                        color = renders.get(item).map_or(rltk::RGB::named(rltk::GREEN), |c| c.fg);
-                                    }
-
-                                    let mut random_coords: Vec<(i32, i32)> = vec![(0, 0)];
-                                    {
-                                        let mut rng = self.ecs.fetch_mut::<RandomNumberGenerator>();
-                                        let all_combinations = (-1..=1).flat_map(|x| (1..=1).map(move |y| (x, y))).collect::<Vec<(i32, i32)>>();
-                                        for _ in 0..rng.roll_dice(1, 4)+2 {
-                                            let choice = rng.random_slice_index(&all_combinations);
-                                            if choice.is_none() { break; }
-                                            random_coords.push(*all_combinations.get(choice.unwrap()).unwrap());
-                                        }
-                                    }
-                                    
-                                    for (dx, dy) in random_coords {
-                                        let mut puddle = self.ecs.create_entity();
-
-                                        puddle = puddle.maybe_with(heal);
-                                        puddle = puddle.maybe_with(tp);
-                                        puddle = puddle.maybe_with(linger);
-                                        puddle = puddle.maybe_with(harm);
-                                        puddle = puddle.maybe_with(boom);
-                                        puddle = puddle.maybe_with(confuse);
-
-                                        puddle = puddle
-                                        .with(Renderable {
-                                            glyph: rltk::to_cp437(' '),
-                                            fg: rltk::RGB::named(rltk::BLACK),
-                                            bg: color.clone(),
-                                            render_order: 10
-                                        })
-                                        .with(Puddle { lifetime: 3 })
-                                        .with(Position {
-                                            x: target.1.unwrap().x + dx, 
-                                            y: target.1.unwrap().y + dy 
-                                        });
-                                        
-                                        puddle.build();
-                                    }
-                                }
-                                // Лужа готова
                             }
                             newrunstate = RunState::PlayerTurn;
                         }
@@ -310,6 +236,8 @@ impl State {
         drop.run_now(&self.ecs);
         let mut throw = ItemThrowSystem {};
         throw.run_now(&self.ecs);
+        let mut boss = BossAI {};
+        boss.run_now(&self.ecs);
 
         let runstate;
         {
@@ -469,6 +397,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<InstantHarm>();
     gs.ecs.register::<Explosion>();
     gs.ecs.register::<Boss>();
+    gs.ecs.register::<MacGuffin>();
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();
 

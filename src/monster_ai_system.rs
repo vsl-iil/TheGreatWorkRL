@@ -1,10 +1,10 @@
-use rltk::Point;
+use rltk::{Point, RandomNumberGenerator, RGB};
 use specs::{ReadStorage, System};
 use specs::prelude::*;
 
-use crate::components::{Agitated, Confusion, Monster, Position, Viewshed, WantsToMelee};
+use crate::components::{Agitated, Boss, BossState, Confusion, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Monster, Name, Position, Potion, Renderable, Viewshed, WantsToMelee, WantsToThrowItem};
 use crate::map::Map;
-use crate::RunState;
+use crate::{inventory_system, RunState};
 
 pub struct MonsterAI { }
 
@@ -58,7 +58,7 @@ impl<'a> System<'a> for MonsterAI {
 
                 if distance < 1.5 {
                     want_melee.insert(entity, WantsToMelee { target: *player_entity }).expect("Unable to insert attack on player");
-                } else if viewshed.visible_tiles.contains(&*player_pos) || is_agitated {
+                } else if (viewshed.visible_tiles.contains(&*player_pos) || is_agitated) && distance < 64.0 {
                     let path = rltk::a_star_search(
                         map.xy_idx(pos.x, pos.y) as i32,
                         map.xy_idx(player_pos.x, player_pos.y) as i32,
@@ -75,6 +75,157 @@ impl<'a> System<'a> for MonsterAI {
                     }
                 }
             } 
+        }
+    }
+}
+
+
+pub struct BossAI {}
+
+impl<'a> System<'a> for BossAI {
+    type SystemData = (WriteStorage<'a, Boss>,
+                       WriteExpect<'a, Map>,
+                       Entities<'a>,
+                       ReadExpect<'a, Entity>,
+                       ReadExpect<'a, Point>,
+                       ReadExpect<'a, RunState>,
+                       WriteStorage<'a, Viewshed>,
+                       WriteStorage<'a, Position>,
+                       WriteStorage<'a, WantsToMelee>,
+                       WriteStorage<'a, Confusion>,
+                       WriteStorage<'a, WantsToThrowItem>,
+                       WriteStorage<'a, Potion>,
+                       WriteStorage<'a, Item>,
+                       WriteStorage<'a, Renderable>,
+                       WriteExpect<'a, RandomNumberGenerator>,
+                       WriteStorage<'a, LingeringEffect>,
+                       WriteStorage<'a, InstantHarm>,
+                       WriteStorage<'a, Explosion>);
+
+    fn run(&mut self, data: Self::SystemData) {
+        let (mut boss, mut map, entities, player_entity, player_pos, runstate, mut viewsheds, mut positions, mut want_melee, mut confused, mut intentthrow, mut potions, mut items, mut renders, mut rng, mut linger, mut harm, mut explosion) = data;
+
+        if *runstate != RunState::MonsterTurn { return; }
+
+        for (entity, viewshed, pos, boss) in (&entities, &mut viewsheds, &mut positions, &mut boss).join() {
+            let mut can_act = true;
+            if let Some(confusion) = confused.get_mut(entity) {
+                confusion.turns -= 1;
+                if confusion.turns < 1 {
+                    confused.remove(entity);
+                }
+                can_act = false;
+            }
+
+            if can_act {
+                // AI
+                let distance = rltk::DistanceAlg::Pythagoras.distance2d(Point::new(pos.x, pos.y), *player_pos);
+
+                if distance < 1.5 {
+                    want_melee.insert(entity, WantsToMelee { target: *player_entity }).expect("Unable to insert attack on player");
+                } else if viewshed.visible_tiles.contains(&*player_pos) {
+                    match boss.state {
+                        BossState::ClosingIn(mut turns) => {
+                            turns -= 1;
+                            dbg!("closing in");
+                            let path = rltk::a_star_search(
+                                map.xy_idx(pos.x, pos.y) as i32,
+                                map.xy_idx(player_pos.x, player_pos.y) as i32,
+                                &*map
+                            );
+                            if path.success && path.steps.len() > 1 {
+                                let mut idx = map.xy_idx(pos.x, pos.y);
+                                map.blocked[idx] = false;
+                                pos.x = path.steps[1] as i32 % map.width;
+                                pos.y = path.steps[1] as i32 / map.width;
+                                idx = map.xy_idx(pos.x, pos.y);
+                                map.blocked[idx] = true;
+                            }
+
+                            if turns == 0 {
+                                if distance >= 5.0 {
+                                    boss.state = BossState::ThrowingPotions(12);
+                                } else {
+                                    boss.state = BossState::GainingDistance(5);
+                                }
+                            } else {
+                                boss.state = BossState::ClosingIn(turns);
+                            }
+                        },
+                        BossState::GainingDistance(mut turns) => {
+                            turns -= 1;
+                            dbg!("gain distance");
+                            // TODO run away
+                            if turns == 0 {
+                                if distance <= 5.0 {
+                                    boss.state = BossState::ClosingIn(5);
+                                } else {
+                                    boss.state = BossState::ThrowingPotions(12);
+                                }
+                            } else {
+                                boss.state = BossState::GainingDistance(turns);
+                            }
+                        },
+                        BossState::ThrowingPotions(mut turns) => 'throw: {
+                            turns -= 1;
+                            if turns % 3 == 0 { 
+                                if distance <= 7.0 {
+                                    let potion = entities.create();
+
+                                    potions.insert(potion, Potion {}).expect("Unable to insert boss potion");
+                                    items.insert(potion, Item {}).expect("Unable to insert boss potion item");
+
+                                    let color;
+                                    match rng.roll_dice(1, 16) {
+                                        1..=4 => {
+                                            explosion.insert(potion, Explosion { maxdmg: 10, radius: 4 }).expect("Unable to insert boss potion explosion");
+                                            color = RGB::named(rltk::ORANGE);
+                                        }
+                                        5..=12 => {
+                                            harm.insert(potion, InstantHarm { dmg: 7 }).expect("Unable to insert boss potion harm");
+                                            color = RGB::named(rltk::DARKRED);
+                                        }
+                                        _ => {
+                                            let etype = match rng.roll_dice(1, 2) {
+                                                1 => {
+                                                    color = RGB::named(rltk::RED);
+                                                    LingerType::Fire
+                                                },
+                                                _ => {
+                                                    color = RGB::named(rltk::GREEN);
+                                                    LingerType::Poison
+                                                },
+                                            };
+                                            linger.insert(potion, LingeringEffect { etype, duration: 5, dmg: 3 }).expect("Unable to insert boss potion linger");
+                                        }
+                                    }
+
+                                    renders.insert(potion, Renderable { 
+                                        glyph: rltk::to_cp437('!'), 
+                                        fg: color,
+                                        bg: RGB::named(rltk::BLACK), 
+                                        render_order: 2 
+                                    }).expect("Unable to insert boss potion render");
+
+                                    intentthrow.insert(*player_entity, WantsToThrowItem { item: potion, target: *player_pos }).expect("Unable to insert boss throw intent");
+                                } else {
+                                    boss.state = BossState::ClosingIn(5);
+                                }
+                            }
+
+                            dbg!("throwing potions");
+                            if turns == 0 {
+                                boss.state = BossState::ClosingIn(5);
+                            } else {
+                                boss.state = BossState::ThrowingPotions(turns);
+                            }
+                        },
+                    }
+
+                    viewshed.dirty = true;
+                }
+            }
+
         }
     }
 }

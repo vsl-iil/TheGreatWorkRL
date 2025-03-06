@@ -1,7 +1,7 @@
-use rltk::{Point, RandomNumberGenerator};
+use rltk::{Point, RandomNumberGenerator, RGB};
 use specs::prelude::*;
 
-use crate::{components::{Agitated, AreaOfEffect, Boss, CombatStats, Confusion, Consumable, Explosion, InBackpack, InflictsDamage, InstantHarm, LingeringEffect, Name, Position, ProvidesHealing, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem, Weight}, gamelog::GameLog, map::Map};
+use crate::{components::{Agitated, AreaOfEffect, CombatStats, Confusion, Consumable, Explosion, InBackpack, InflictsDamage, InstantHarm, LingeringEffect, MacGuffin, Name, Position, Potion, ProvidesHealing, Puddle, Renderable, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem, Weight}, gamelog::GameLog, map::Map};
 
 pub struct InventorySystem {}
 
@@ -13,7 +13,7 @@ impl<'a> System<'a> for InventorySystem {
                         WriteStorage<'a, Position>,
                         ReadStorage<'a, Name>,
                         WriteStorage<'a, InBackpack>,
-                        ReadStorage<'a, Boss>,
+                        ReadStorage<'a, MacGuffin>,
                         // WriteExpect<'a, Map>
                     );
 
@@ -221,6 +221,7 @@ impl<'a> System<'a> for ItemDropSystem {
         let (player_entity, mut log, entities, mut drop, mut pos, names, mut backpack) = data;
 
         for (entity, to_drop) in (&entities, &drop).join() {
+            // entities.create();
             let mut dropper_pos = Position { x: 0, y: 0 };
             {
                 let dropped_pos = pos.get(entity).unwrap();
@@ -263,55 +264,112 @@ impl<'a> System<'a> for ItemThrowSystem {
                         WriteStorage<'a, LingeringEffect>,
                         WriteStorage<'a, InstantHarm>,
                         WriteStorage<'a, Explosion>,
-                        WriteStorage<'a, Confusion>
+                        WriteStorage<'a, Confusion>,
+                        ReadStorage<'a, Potion>,
+                        WriteStorage<'a, Renderable>,
+                        WriteStorage<'a, Puddle>,
+                        WriteExpect<'a, RandomNumberGenerator>
                     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, mut intentthrow, map, mut backpack, mut pos, mut suffer, weight, mut agitate,   mut healing, mut teleport, mut linger, mut harm, mut explosion, mut confusion) = data;
+        let (entities, mut intentthrow, map, mut backpack, mut pos, mut suffer, weight, mut agitate,   mut healing, mut teleport, mut linger, mut harm, mut explosion, mut confusion, potions, mut render, mut puddle, mut rng) = data;
 
         for to_throw in (&mut intentthrow).join() {
             let Point {x, y} = to_throw.target;
-            
+
+            //  ================== PUDDLES =================
+            let mut puddles: Vec<Entity> = vec![];
+            let is_potion;
+            {
+                is_potion = potions.get(to_throw.item).is_some();
+            }
+            if is_potion {
+                let mut random_coords: Vec<(i32, i32)> = vec![(0, 0)];
+                {
+                    let all_combinations = (-1..=1).flat_map(|x| (1..=1).map(move |y| (x, y))).collect::<Vec<(i32, i32)>>();
+                    for _ in 0..rng.roll_dice(1, 4)+2 {
+                        let choice = rng.random_slice_index(&all_combinations);
+                        if choice.is_none() { break; }
+                        random_coords.push(*all_combinations.get(choice.unwrap()).unwrap());
+                    }
+                }
+
+                for (dx, dy) in random_coords {
+                    let puddle = entities.create();
+                    pos.insert(puddle, Position { x: x+dx, y: y+dy }).expect("Unable to insert puddle coords");
+                    puddles.push(puddle);
+                }
+            }
             let mut is_inflictor = false;
             for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                 // INFLICTS
                 // Список эффектов: ProvidesHealing, Teleport, Lingering, Harm, Explosion
 
                 // Heal
-                if let Some(heal) = healing.get(to_throw.item) {
-                    // let heal_amount = heal.heal_amount;
-                    healing.insert(*mob, *heal).expect("Unable to apply healing inflict to entity");
+                if let Some(&heal) = healing.get(to_throw.item) {
+                    healing.insert(*mob, heal).expect("Unable to apply healing inflict to entity");
+                    for pd in puddles.iter() {
+                        healing.insert(*pd, heal).expect("Unable to insert puddle heal");
+                    }
                     is_inflictor = true;
                 }
 
                 // Teleport
-                if let Some(tp) = teleport.get(to_throw.item) {
-                    teleport.insert(*mob, *tp).expect("Unable to apply teleport inflict to entity");
+                if let Some(&tp) = teleport.get(to_throw.item) {
+                    teleport.insert(*mob, tp).expect("Unable to apply teleport inflict to entity");
+                    for pd in puddles.iter() {
+                        teleport.insert(*pd, tp).expect("Unable to insert puddle tp");
+                    }
                     is_inflictor = true;
                 }
 
                 // Lingering
-                if let Some(lingering) = linger.get(to_throw.item) {
-                    linger.insert(*mob, *lingering).expect("Unable to apply lingering inflict to entity");
+                if let Some(&lingering) = linger.get(to_throw.item) {
+                    linger.insert(*mob, lingering).expect("Unable to apply lingering inflict to entity");
+                    for pd in puddles.iter() {
+                        linger.insert(*pd, lingering).expect("Unable to insert puddle linger");
+                    }
                     is_inflictor = true;
                 }
 
                 // Instant damage
-                if let Some(dmg) = harm.get(to_throw.item) {
-                    harm.insert(*mob, *dmg).expect("Unable to apply harm inflict to entity");
+                if let Some(&dmg) = harm.get(to_throw.item) {
+                    harm.insert(*mob, dmg).expect("Unable to apply harm inflict to entity");
+                    for pd in puddles.iter() {
+                        harm.insert(*pd, dmg).expect("Unable to insert puddle dmg");
+                    }
                     is_inflictor = true;
                 }
 
                 // Explosion
-                if let Some(boom) = explosion.get(to_throw.item) {
-                    explosion.insert(*mob, *boom).expect("Unable to apply explosion inflict to entity");
+                if let Some(&boom) = explosion.get(to_throw.item) {
+                    explosion.insert(*mob, boom).expect("Unable to apply explosion inflict to entity");
+                    for pd in puddles.iter() {
+                        explosion.insert(*pd, boom).expect("Unable to insert puddle explosion");
+                    }
                     is_inflictor = true;
                 }
 
                 // Confusion
-                if let Some(confuse) = confusion.get(to_throw.item) {
-                    confusion.insert(*mob, *confuse).expect("Unable to confuse entity");
+                if let Some(&confuse) = confusion.get(to_throw.item) {
+                    confusion.insert(*mob, confuse).expect("Unable to confuse entity");
+                    for pd in puddles.iter() {
+                        confusion.insert(*pd, confuse).expect("Unable to insert puddle confuse");
+                    }
                     is_inflictor = true;
+                }
+
+                let color = render.get(to_throw.item).map_or(RGB::named(rltk::GREEN), |r| r.fg);
+
+                for pd in puddles.iter() {
+                    render.insert(*pd, Renderable { 
+                        glyph: rltk::to_cp437(' '), 
+                        fg: RGB::named(rltk::BLACK), 
+                        bg: color, 
+                        render_order: 10 
+                    }).expect("Unable to insert renderable puddle");
+
+                    puddle.insert(*pd, Puddle { lifetime: 3 }).expect("Unable to insert puddle lifetime");
                 }
 
                 // Эй, кто в меня кинул?!
@@ -330,6 +388,8 @@ impl<'a> System<'a> for ItemThrowSystem {
                 let Point {x, y} = to_throw.target;
                 pos.insert(to_throw.item, Position { x, y }).expect("Unable to place thrown item in position");
             }
+        
+
         }
         intentthrow.clear();
     }

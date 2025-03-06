@@ -34,8 +34,20 @@ pub struct Player {}
 #[derive(Component, Serialize, Deserialize, Clone, Debug)]
 pub struct Monster {}
 
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+pub struct Boss {
+    pub state: BossState
+}
+
 #[derive(Component, Serialize, Deserialize, Clone, Debug)]
-pub struct Boss {}
+pub struct MacGuffin {}
+
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq)]
+pub enum BossState {
+    ThrowingPotions(i32),
+    ClosingIn(i32),
+    GainingDistance(i32)
+}
 
 #[derive(Component, ConvertSaveload, Clone)]
 pub struct Name {
