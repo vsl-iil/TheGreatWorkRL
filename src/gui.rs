@@ -261,9 +261,9 @@ pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
 
         if game_exists {
             if selection == MainMenuSelection::LoadGame {
-                ctx.print_color_centered(26, RGB::named(rltk::BLACK), RGB::named(rltk::YELLOW), " Load Game ");
+                ctx.print_color_centered(26, RGB::named(rltk::BLACK), RGB::named(rltk::YELLOW), " Continue ");
             } else {
-                ctx.print_color_centered(26, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), " Load Game ");
+                ctx.print_color_centered(26, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), " Continue ");
             }
         }
 

@@ -2,10 +2,10 @@ use rltk::{Point, RandomNumberGenerator, RGB};
 use specs::{ReadStorage, System};
 use specs::prelude::*;
 
-use crate::components::{Agitated, Bomber, Boss, BossState, Confusion, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Monster, Name, Position, Potion, Renderable, SufferDamage, Viewshed, WantsToMelee, WantsToThrowItem};
+use crate::components::{Agitated, Bomber, Boss, BossState, Confusion, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Monster, Position, Potion, Renderable, SufferDamage, Viewshed, WantsToMelee, WantsToThrowItem};
 use crate::gamelog::GameLog;
 use crate::map::Map;
-use crate::{gamelog, inventory_system, RunState};
+use crate::RunState;
 
 pub struct MonsterAI { }
 

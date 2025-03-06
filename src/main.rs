@@ -5,7 +5,7 @@ use inventory_system::{InventorySystem, ItemDropSystem, ItemThrowSystem, ItemUse
 use map_indexing_system::MapIndexingSystem;
 use melee_combat_system::MeleeCombatSystem;
 use monster_ai_system::{BossAI, MonsterAI};
-use rltk::{GameState, Point, RandomNumberGenerator, Rltk};
+use rltk::{GameState, Point, Rltk};
 use specs::prelude::*;
 use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
 
@@ -166,7 +166,23 @@ impl GameState for State {
                             => {
                                 match selected {
                                     gui::MainMenuSelection::NewGame
-                                        => newrunstate = RunState::PreRun,
+                                        => {
+                                            let playerentity;
+                                            {
+                                                playerentity = self.ecs.try_fetch_mut::<Entity>().map(|f| *f);
+                                            }
+                                            if let Some(entity) = playerentity {
+                                                self.ecs.delete_entity(entity).expect("Unable to delete player");
+                                            }
+
+                                            {
+                                                let mut log = self.ecs.fetch_mut::<GameLog>();
+                                                log.entries.clear();
+                                                log.entries.push("Welcome to the dungeon of doom!".to_owned());
+                                            }
+                                            generate_first_level(&mut self.ecs);
+                                            newrunstate = RunState::PreRun;
+                                        },
                                     gui::MainMenuSelection::LoadGame
                                         => {
                                             saveload_system::load_game(&mut self.ecs);
@@ -404,23 +420,26 @@ fn main() -> rltk::BError {
 
     gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
 
-    let mut map = Map::new_map_rooms_and_corridors(1);
-    let (player_x, player_y) = map.rooms[0].center();
-    
-    gs.ecs.insert(rltk::RandomNumberGenerator::new());
-
-    gs.ecs.insert(Point::new(player_x, player_y));
-    let player_entity = spawner::player(&mut gs.ecs, player_x, player_y);
-    gs.ecs.insert(player_entity);
-
-    for room in map.rooms.clone().iter().skip(1) {
-        spawner::spawn_room(&mut gs.ecs, room, &mut map, 1);
-    }
-
-    gs.ecs.insert(map);
-    gs.ecs.insert(gamelog::GameLog { entries: vec!["Welcome to the dungeon of doom!".to_string()] });
+    gs.ecs.insert(gamelog::GameLog { entries: vec![] });
     gs.ecs.insert(RunState::MainMenu { menu_selection: gui::MainMenuSelection::NewGame });
 
     rltk::main_loop(context, gs)
 
+}
+
+fn generate_first_level(ecs: &mut World) {
+    let mut map = Map::new_map_rooms_and_corridors(1);
+    let (player_x, player_y) = map.rooms[0].center();
+    
+    ecs.insert(rltk::RandomNumberGenerator::new());
+
+    ecs.insert(Point::new(player_x, player_y));
+    let player_entity = spawner::player(ecs, player_x, player_y);
+    ecs.insert(player_entity);
+
+    for room in map.rooms.clone().iter().skip(1) {
+        spawner::spawn_room(ecs, room, &mut map, 1);
+    }
+
+    ecs.insert(map);
 }
