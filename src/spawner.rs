@@ -68,8 +68,7 @@ fn finalboss(ecs: &mut World, x: i32, y: i32) {
             render_order: 1
         })
         .with(Viewshed { visible_tiles: vec![], range: 12, dirty: true })
-        // .with(Monster {})
-        .with(Boss { state: crate::components::BossState::ThrowingPotions(6) })
+        .with(Boss { state: crate::components::BossState::ClosingIn(10) })
         .with(Name { name: "The Cursed Alchemist".to_string() })
         .with(BlocksTile {})
         .with(CombatStats {

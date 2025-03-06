@@ -123,10 +123,9 @@ impl<'a> System<'a> for BossAI {
 
                 if distance < 1.5 {
                     want_melee.insert(entity, WantsToMelee { target: *player_entity }).expect("Unable to insert attack on player");
-                } else if viewshed.visible_tiles.contains(&*player_pos) {
+                } else {
                     match boss.state {
-                        BossState::ClosingIn(mut turns) => {
-                            turns -= 1;
+                        BossState::ClosingIn(_) => {
                             dbg!("closing in");
                             let path = rltk::a_star_search(
                                 map.xy_idx(pos.x, pos.y) as i32,
@@ -141,84 +140,57 @@ impl<'a> System<'a> for BossAI {
                                 idx = map.xy_idx(pos.x, pos.y);
                                 map.blocked[idx] = true;
                             }
-
-                            if turns == 0 {
-                                if distance >= 5.0 {
-                                    boss.state = BossState::ThrowingPotions(12);
-                                } else {
-                                    boss.state = BossState::GainingDistance(5);
-                                }
-                            } else {
-                                boss.state = BossState::ClosingIn(turns);
-                            }
+                            boss.state = state_table(boss.state, distance);
                         },
-                        BossState::GainingDistance(mut turns) => {
-                            turns -= 1;
+                        BossState::GainingDistance(_) => {
                             dbg!("gain distance");
                             // TODO run away
-                            if turns == 0 {
-                                if distance <= 5.0 {
-                                    boss.state = BossState::ClosingIn(5);
-                                } else {
-                                    boss.state = BossState::ThrowingPotions(12);
-                                }
-                            } else {
-                                boss.state = BossState::GainingDistance(turns);
-                            }
+                            boss.state = state_table(boss.state, distance);
                         },
-                        BossState::ThrowingPotions(mut turns) => 'throw: {
-                            turns -= 1;
-                            if turns % 3 == 0 { 
-                                if distance <= 7.0 {
-                                    let potion = entities.create();
+                        BossState::ThrowingPotions(turns) => {
+                            if turns % 4 == 1 { 
+                                let potion = entities.create();
 
-                                    potions.insert(potion, Potion {}).expect("Unable to insert boss potion");
-                                    items.insert(potion, Item {}).expect("Unable to insert boss potion item");
+                                potions.insert(potion, Potion {}).expect("Unable to insert boss potion");
+                                items.insert(potion, Item {}).expect("Unable to insert boss potion item");
 
-                                    let color;
-                                    match rng.roll_dice(1, 16) {
-                                        1..=4 => {
-                                            explosion.insert(potion, Explosion { maxdmg: 10, radius: 4 }).expect("Unable to insert boss potion explosion");
-                                            color = RGB::named(rltk::ORANGE);
-                                        }
-                                        5..=12 => {
-                                            harm.insert(potion, InstantHarm { dmg: 7 }).expect("Unable to insert boss potion harm");
-                                            color = RGB::named(rltk::DARKRED);
-                                        }
-                                        _ => {
-                                            let etype = match rng.roll_dice(1, 2) {
-                                                1 => {
-                                                    color = RGB::named(rltk::RED);
-                                                    LingerType::Fire
-                                                },
-                                                _ => {
-                                                    color = RGB::named(rltk::GREEN);
-                                                    LingerType::Poison
-                                                },
-                                            };
-                                            linger.insert(potion, LingeringEffect { etype, duration: 5, dmg: 3 }).expect("Unable to insert boss potion linger");
-                                        }
+                                let color;
+                                match rng.roll_dice(1, 16) {
+                                    1..=4 => {
+                                        explosion.insert(potion, Explosion { maxdmg: 10, radius: 4 }).expect("Unable to insert boss potion explosion");
+                                        color = RGB::named(rltk::ORANGE);
                                     }
-
-                                    renders.insert(potion, Renderable { 
-                                        glyph: rltk::to_cp437('!'), 
-                                        fg: color,
-                                        bg: RGB::named(rltk::BLACK), 
-                                        render_order: 2 
-                                    }).expect("Unable to insert boss potion render");
-
-                                    intentthrow.insert(*player_entity, WantsToThrowItem { item: potion, target: *player_pos }).expect("Unable to insert boss throw intent");
-                                } else {
-                                    boss.state = BossState::ClosingIn(5);
+                                    5..=12 => {
+                                        harm.insert(potion, InstantHarm { dmg: 7 }).expect("Unable to insert boss potion harm");
+                                        color = RGB::named(rltk::DARKRED);
+                                    }
+                                    _ => {
+                                        let etype = match rng.roll_dice(1, 2) {
+                                            1 => {
+                                                color = RGB::named(rltk::RED);
+                                                LingerType::Fire
+                                            },
+                                            _ => {
+                                                color = RGB::named(rltk::GREEN);
+                                                LingerType::Poison
+                                            },
+                                        };
+                                        linger.insert(potion, LingeringEffect { etype, duration: 5, dmg: 3 }).expect("Unable to insert boss potion linger");
+                                    }
                                 }
+
+                                renders.insert(potion, Renderable { 
+                                    glyph: rltk::to_cp437('!'), 
+                                    fg: color,
+                                    bg: RGB::named(rltk::BLACK), 
+                                    render_order: 2 
+                                }).expect("Unable to insert boss potion render");
+
+                                intentthrow.insert(*player_entity, WantsToThrowItem { item: potion, target: *player_pos }).expect("Unable to insert boss throw intent");
                             }
 
                             dbg!("throwing potions");
-                            if turns == 0 {
-                                boss.state = BossState::ClosingIn(5);
-                            } else {
-                                boss.state = BossState::ThrowingPotions(turns);
-                            }
+                            boss.state = state_table(boss.state, distance);
                         },
                     }
 
@@ -227,5 +199,47 @@ impl<'a> System<'a> for BossAI {
             }
 
         }
+    }
+}
+
+const LBOUND: f32 = 5.0;
+const RBOUND: f32 = 7.0;
+
+fn state_table(prev_state: BossState, distance: f32) -> BossState {
+    
+    let lower_than_lbound = distance <= LBOUND;
+    let higher_than_rbound = distance >= RBOUND;
+    match prev_state {
+        BossState::ThrowingPotions(0) => { BossState::ClosingIn(5) },
+        BossState::ClosingIn(0)       => {
+            if lower_than_lbound {
+                BossState::GainingDistance(5)
+            } else {
+                BossState::ThrowingPotions(12)
+            }
+        },
+        BossState::GainingDistance(0) => {
+            if lower_than_lbound {
+                BossState::ClosingIn(5)
+            } else {
+                BossState::ThrowingPotions(12)
+            }
+        },
+
+        BossState::ThrowingPotions(n) => {
+            if lower_than_lbound {
+                BossState::ClosingIn(5)
+            } else {
+                BossState::ThrowingPotions(n-1)
+            }
+        },
+        BossState::ClosingIn(n) => BossState::ClosingIn(n-1),
+        BossState::GainingDistance(n) => {
+            if higher_than_rbound {
+                BossState::ThrowingPotions(12)
+            } else {
+                BossState::GainingDistance(n-1)
+            }
+        },
     }
 }
