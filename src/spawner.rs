@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rltk::{RandomNumberGenerator, RGB};
 use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
 
-use crate::{components::{BlocksTile, Boss, CombatStats, Confusion, Consumable, Explosion, InstantHarm, Item, LingerType, LingeringEffect, MacGuffin, Monster, Name, Player, Position, Potion, ProvidesHealing, Renderable, SerializeMe, Teleport, Viewshed}, map::{self, Map, TileType, MAPWIDTH}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
+use crate::{components::{BlocksTile, Bomber, Boss, CombatStats, Confusion, Consumable, Explosion, InstantHarm, Item, LingerType, LingeringEffect, MacGuffin, Monster, Name, Player, Position, Potion, ProvidesHealing, Renderable, SerializeMe, Teleport, Viewshed}, map::{self, Map, TileType, MAPWIDTH}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
 
 pub const MAX_MONSTERS: i32 = 4;
 
@@ -52,6 +52,81 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
             hp: 10,
             defence: 1,
             power: 7
+        })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+fn bomber(ecs: &mut World, x: i32, y: i32) {
+    let potion;
+    let color;
+    {
+        let choice;
+        let choice_color;
+        {
+            let mut rng = ecs.fetch_mut::<RandomNumberGenerator>();
+            choice = rng.roll_dice(1, 16);
+            choice_color = rng.roll_dice(1, 2);
+        }
+
+        let mut potion_build = ecs
+            .create_entity()
+            .with(Item {})
+            .with(Potion {});
+
+        match choice {
+            1..=4 => {
+                potion_build = potion_build.with(Explosion { maxdmg: 10, radius: 4});
+                color = RGB::named(rltk::ORANGE);
+            }
+            5..=12 => {
+                potion_build = potion_build.with(InstantHarm { dmg: 5 });
+                color = RGB::named(rltk::DARKRED);
+            }
+            _ => {
+                let etype = match choice_color {
+                    1 => {
+                        color = RGB::named(rltk::RED);
+                        LingerType::Fire
+                    },
+                    _ => {
+                        color = RGB::named(rltk::GREEN);
+                        LingerType::Poison
+                    },
+                };
+                potion_build = potion_build.with(LingeringEffect { etype, duration: 3, dmg: 3 });
+            }
+        }
+
+        potion_build = potion_build.with(Renderable { 
+            glyph: rltk::to_cp437('!'), 
+            fg: color,
+            bg: RGB::named(rltk::BLACK), 
+            render_order: 2 
+        });
+
+        potion = potion_build.build();
+    }
+
+    ecs 
+        .create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: rltk::to_cp437('¿'),
+            fg: color,
+            bg: RGB::named(rltk::BLACK),
+            render_order: 1
+        })
+        .with(Viewshed { visible_tiles: vec![], range: 8, dirty: true })
+        .with(Monster {})
+        .with(Bomber { effect: potion })
+        .with(Name { name: "Living potion".to_owned() })
+        .with(BlocksTile {})
+        .with(CombatStats {
+            max_hp: 5,
+            hp: 5,
+            defence: 0,
+            power: 0
         })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
@@ -156,6 +231,8 @@ pub fn spawn_room(ecs: &mut World, room: &Rect, map: &mut Map, map_depth: i32) {
                 => goblin(ecs, x, y),
             SpawnEntry::Ork 
                 => ork(ecs, x, y),
+            SpawnEntry::Bomber
+                => bomber(ecs, x, y),
             // SpawnEntry::MissileScroll
             //     => magic_missile_scroll(ecs, spawn.0.0, spawn.0.1),
             SpawnEntry::HealingPotion
@@ -378,6 +455,7 @@ fn room_table(map_depth: i32) -> RandomTable {
                 // Enemies
                 .add(SpawnEntry::Goblin, 12)
                 .add(SpawnEntry::Ork, 1 + map_depth)
+                .add(SpawnEntry::Bomber, -3 + map_depth)
                 // Items
                 .add(SpawnEntry::HealingPotion, 7)
                 .add(SpawnEntry::LingeringPotion, 2 + map_depth)
@@ -397,4 +475,5 @@ fn boss_table() -> RandomTable {
                 .add(SpawnEntry::ExplosionPotion, 3)
                 .add(SpawnEntry::ConfusionPotion, 5)
                 .add(SpawnEntry::TeleportPotion, 2)
+                .add(SpawnEntry::Bomber, 2)
 }

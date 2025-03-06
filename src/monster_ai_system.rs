@@ -2,7 +2,7 @@ use rltk::{Point, RandomNumberGenerator, RGB};
 use specs::{ReadStorage, System};
 use specs::prelude::*;
 
-use crate::components::{Agitated, Boss, BossState, Confusion, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Monster, Name, Position, Potion, Renderable, Viewshed, WantsToMelee, WantsToThrowItem};
+use crate::components::{Agitated, Bomber, Boss, BossState, Confusion, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Monster, Name, Position, Potion, Renderable, SufferDamage, Viewshed, WantsToMelee, WantsToThrowItem};
 use crate::map::Map;
 use crate::{inventory_system, RunState};
 
@@ -19,11 +19,14 @@ impl<'a> System<'a> for MonsterAI {
                         ReadStorage<'a, Monster>,
                         WriteStorage<'a, Position>,
                         WriteStorage<'a, WantsToMelee>,
+                        WriteStorage<'a, WantsToThrowItem>,
+                        WriteStorage<'a, SufferDamage>,
                         WriteStorage<'a, Confusion>,
-                        WriteStorage<'a, Agitated>);
+                        WriteStorage<'a, Agitated>,
+                        ReadStorage<'a, Bomber>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut map, player_pos, player_entity, runstate, entities, mut viewshed, monster, mut position, mut want_melee, mut confused, mut agitated) = data;
+        let (mut map, player_pos, player_entity, runstate, entities, mut viewshed, monster, mut position, mut want_melee, mut want_throw, mut suffer, mut confused, mut agitated, bombers) = data;
 
         if *runstate != RunState::MonsterTurn { return; }
 
@@ -57,8 +60,14 @@ impl<'a> System<'a> for MonsterAI {
                 let distance = rltk::DistanceAlg::Pythagoras.distance2d(Point::new(pos.x, pos.y), *player_pos);
 
                 if distance < 1.5 {
-                    want_melee.insert(entity, WantsToMelee { target: *player_entity }).expect("Unable to insert attack on player");
-                } else if (viewshed.visible_tiles.contains(&*player_pos) || is_agitated) && distance < 64.0 {
+                    if let Some(bomber) = bombers.get(entity) {
+                        // kamikadze
+                        want_throw.insert(entity, WantsToThrowItem { item: bomber.effect, target: *player_pos }).expect("Unable to kamikadze player");
+                        SufferDamage::new_damage(&mut suffer, entity, std::i32::MAX);
+                    } else {
+                        want_melee.insert(entity, WantsToMelee { target: *player_entity }).expect("Unable to insert attack on player");
+                    }
+                } else if viewshed.visible_tiles.contains(&*player_pos) || is_agitated {
                     let path = rltk::a_star_search(
                         map.xy_idx(pos.x, pos.y) as i32,
                         map.xy_idx(player_pos.x, player_pos.y) as i32,

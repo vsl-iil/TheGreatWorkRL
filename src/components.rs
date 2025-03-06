@@ -34,6 +34,11 @@ pub struct Player {}
 #[derive(Component, Serialize, Deserialize, Clone, Debug)]
 pub struct Monster {}
 
+#[derive(Component, ConvertSaveload, Clone, Copy, Debug)]
+pub struct Bomber { 
+    pub effect: Entity 
+}
+
 #[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
 pub struct Boss {
     pub state: BossState

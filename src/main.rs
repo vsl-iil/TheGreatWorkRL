@@ -396,6 +396,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<LingeringEffect>();
     gs.ecs.register::<InstantHarm>();
     gs.ecs.register::<Explosion>();
+    gs.ecs.register::<Bomber>();
     gs.ecs.register::<Boss>();
     gs.ecs.register::<MacGuffin>();
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
