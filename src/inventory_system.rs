@@ -300,7 +300,6 @@ impl<'a> System<'a> for ItemThrowSystem {
                     puddles.push(puddle);
                 }
             }
-            let mut is_inflictor = false;
             for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                 // INFLICTS
                 // Список эффектов: ProvidesHealing, Teleport, Lingering, Harm, Explosion
@@ -311,7 +310,6 @@ impl<'a> System<'a> for ItemThrowSystem {
                     for pd in puddles.iter() {
                         healing.insert(*pd, heal).expect("Unable to insert puddle heal");
                     }
-                    is_inflictor = true;
                 }
 
                 // Teleport
@@ -320,7 +318,6 @@ impl<'a> System<'a> for ItemThrowSystem {
                     for pd in puddles.iter() {
                         teleport.insert(*pd, tp).expect("Unable to insert puddle tp");
                     }
-                    is_inflictor = true;
                 }
 
                 // Lingering
@@ -329,7 +326,6 @@ impl<'a> System<'a> for ItemThrowSystem {
                     for pd in puddles.iter() {
                         linger.insert(*pd, lingering).expect("Unable to insert puddle linger");
                     }
-                    is_inflictor = true;
                 }
 
                 // Instant damage
@@ -338,7 +334,6 @@ impl<'a> System<'a> for ItemThrowSystem {
                     for pd in puddles.iter() {
                         harm.insert(*pd, dmg).expect("Unable to insert puddle dmg");
                     }
-                    is_inflictor = true;
                 }
 
                 // Explosion
@@ -347,7 +342,6 @@ impl<'a> System<'a> for ItemThrowSystem {
                     for pd in puddles.iter() {
                         explosion.insert(*pd, boom).expect("Unable to insert puddle explosion");
                     }
-                    is_inflictor = true;
                 }
 
                 // Confusion
@@ -356,24 +350,23 @@ impl<'a> System<'a> for ItemThrowSystem {
                     for pd in puddles.iter() {
                         confusion.insert(*pd, confuse).expect("Unable to insert puddle confuse");
                     }
-                    is_inflictor = true;
-                }
-
-                let color = render.get(to_throw.item).map_or(RGB::named(rltk::GREEN), |r| r.fg);
-
-                for pd in puddles.iter() {
-                    render.insert(*pd, Renderable { 
-                        glyph: rltk::to_cp437(' '), 
-                        fg: RGB::named(rltk::BLACK), 
-                        bg: color, 
-                        render_order: 10 
-                    }).expect("Unable to insert renderable puddle");
-
-                    puddle.insert(*pd, Puddle { lifetime: 3 }).expect("Unable to insert puddle lifetime");
                 }
 
                 // Эй, кто в меня кинул?!
                 agitate.insert(*mob, Agitated { turns: 2 }).expect("Unable to agitate enemy after throw.");
+            }
+
+            let color = render.get(to_throw.item).map_or(RGB::named(rltk::GREEN), |r| r.fg);
+
+            for pd in puddles.iter() {
+                render.insert(*pd, Renderable { 
+                    glyph: rltk::to_cp437(' '), 
+                    fg: RGB::named(rltk::BLACK), 
+                    bg: color, 
+                    render_order: 10 
+                }).expect("Unable to insert renderable puddle");
+
+                puddle.insert(*pd, Puddle { lifetime: 3 }).expect("Unable to insert puddle lifetime");
             }
             
             // damage based on weight
@@ -381,7 +374,7 @@ impl<'a> System<'a> for ItemThrowSystem {
                 SufferDamage::new_damage(&mut suffer, *target, weight.get(to_throw.item).map_or(2, |w| w.0 * 2));
             }
 
-            if is_inflictor {
+            if is_potion {
                 entities.delete(to_throw.item).expect("Unable to delete thrown entity");
             } else {
                 backpack.remove(to_throw.item).expect("Unable to remove thrown item from backpack");
