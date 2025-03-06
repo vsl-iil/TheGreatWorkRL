@@ -3,8 +3,9 @@ use specs::{ReadStorage, System};
 use specs::prelude::*;
 
 use crate::components::{Agitated, Bomber, Boss, BossState, Confusion, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Monster, Name, Position, Potion, Renderable, SufferDamage, Viewshed, WantsToMelee, WantsToThrowItem};
+use crate::gamelog::GameLog;
 use crate::map::Map;
-use crate::{inventory_system, RunState};
+use crate::{gamelog, inventory_system, RunState};
 
 pub struct MonsterAI { }
 
@@ -107,12 +108,13 @@ impl<'a> System<'a> for BossAI {
                        WriteStorage<'a, Item>,
                        WriteStorage<'a, Renderable>,
                        WriteExpect<'a, RandomNumberGenerator>,
+                       WriteExpect<'a, GameLog>,
                        WriteStorage<'a, LingeringEffect>,
                        WriteStorage<'a, InstantHarm>,
                        WriteStorage<'a, Explosion>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut boss, mut map, entities, player_entity, player_pos, runstate, mut viewsheds, mut positions, mut want_melee, mut confused, mut intentthrow, mut potions, mut items, mut renders, mut rng, mut linger, mut harm, mut explosion) = data;
+        let (mut boss, mut map, entities, player_entity, player_pos, runstate, mut viewsheds, mut positions, mut want_melee, mut confused, mut intentthrow, mut potions, mut items, mut renders, mut rng, mut log, mut linger, mut harm, mut explosion) = data;
 
         if *runstate != RunState::MonsterTurn { return; }
 
@@ -157,45 +159,50 @@ impl<'a> System<'a> for BossAI {
                             boss.state = state_table(boss.state, distance);
                         },
                         BossState::ThrowingPotions(turns) => {
-                            if turns % 4 == 1 { 
-                                let potion = entities.create();
+                            if viewshed.visible_tiles.contains(&*player_pos) {
+                                if turns % 4 == 1 { 
+                                    let potion = entities.create();
 
-                                potions.insert(potion, Potion {}).expect("Unable to insert boss potion");
-                                items.insert(potion, Item {}).expect("Unable to insert boss potion item");
+                                    potions.insert(potion, Potion {}).expect("Unable to insert boss potion");
+                                    items.insert(potion, Item {}).expect("Unable to insert boss potion item");
 
-                                let color;
-                                match rng.roll_dice(1, 16) {
-                                    1..=4 => {
-                                        explosion.insert(potion, Explosion { maxdmg: 10, radius: 4 }).expect("Unable to insert boss potion explosion");
-                                        color = RGB::named(rltk::ORANGE);
+                                    let color;
+                                    match rng.roll_dice(1, 16) {
+                                        1..=4 => {
+                                            explosion.insert(potion, Explosion { maxdmg: 10, radius: 4 }).expect("Unable to insert boss potion explosion");
+                                            color = RGB::named(rltk::ORANGE);
+                                        }
+                                        5..=12 => {
+                                            harm.insert(potion, InstantHarm { dmg: 7 }).expect("Unable to insert boss potion harm");
+                                            color = RGB::named(rltk::DARKRED);
+                                        }
+                                        _ => {
+                                            let etype = match rng.roll_dice(1, 2) {
+                                                1 => {
+                                                    color = RGB::named(rltk::RED);
+                                                    LingerType::Fire
+                                                },
+                                                _ => {
+                                                    color = RGB::named(rltk::GREEN);
+                                                    LingerType::Poison
+                                                },
+                                            };
+                                            linger.insert(potion, LingeringEffect { etype, duration: 5, dmg: 3 }).expect("Unable to insert boss potion linger");
+                                        }
                                     }
-                                    5..=12 => {
-                                        harm.insert(potion, InstantHarm { dmg: 7 }).expect("Unable to insert boss potion harm");
-                                        color = RGB::named(rltk::DARKRED);
-                                    }
-                                    _ => {
-                                        let etype = match rng.roll_dice(1, 2) {
-                                            1 => {
-                                                color = RGB::named(rltk::RED);
-                                                LingerType::Fire
-                                            },
-                                            _ => {
-                                                color = RGB::named(rltk::GREEN);
-                                                LingerType::Poison
-                                            },
-                                        };
-                                        linger.insert(potion, LingeringEffect { etype, duration: 5, dmg: 3 }).expect("Unable to insert boss potion linger");
-                                    }
+
+                                    renders.insert(potion, Renderable { 
+                                        glyph: rltk::to_cp437('!'), 
+                                        fg: color,
+                                        bg: RGB::named(rltk::BLACK), 
+                                        render_order: 2 
+                                    }).expect("Unable to insert boss potion render");
+
+                                    intentthrow.insert(*player_entity, WantsToThrowItem { item: potion, target: *player_pos }).expect("Unable to insert boss throw intent");
                                 }
-
-                                renders.insert(potion, Renderable { 
-                                    glyph: rltk::to_cp437('!'), 
-                                    fg: color,
-                                    bg: RGB::named(rltk::BLACK), 
-                                    render_order: 2 
-                                }).expect("Unable to insert boss potion render");
-
-                                intentthrow.insert(*player_entity, WantsToThrowItem { item: potion, target: *player_pos }).expect("Unable to insert boss throw intent");
+                                else if turns % 4 == 3 {
+                                    log.entries.push("The Cursed Alchemist is aiming with a flask...".to_owned());
+                                }
                             }
 
                             dbg!("throwing potions");
