@@ -25,7 +25,7 @@ impl<'a> System<'a> for InventorySystem {
             backpack.insert(pickup.item, InBackpack { owner: pickup.collected_by }).expect("Unable to insert backpack entry");
             
             if pickup.collected_by == *player_entity {
-                if boss.get(pickup.item).is_some() {
+                if boss.contains(pickup.item) {
                     log.entries.push("You obtained the Philosopher's Stone!".to_owned());
                 } else {
                     let mut log_name = "something";
@@ -194,7 +194,7 @@ impl<'a> System<'a> for ItemUseSystem {
             }
         }
 
-        if consumables.get(usable.item).is_some() {
+        if consumables.contains(usable.item) {
             entities.delete(usable.item).expect("Unable to delete consumable");
         }
     }
@@ -281,7 +281,7 @@ impl<'a> System<'a> for ItemThrowSystem {
             let mut puddles: Vec<Entity> = vec![];
             let is_potion;
             {
-                is_potion = potions.get(to_throw.item).is_some();
+                is_potion = potions.contains(to_throw.item);
             }
             if is_potion {
                 let mut random_coords: Vec<(i32, i32)> = vec![(0, 0)];

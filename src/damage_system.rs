@@ -48,7 +48,7 @@ pub fn clean_up_dead(ecs: &mut World) {
                 let player = players.get(entity);
                 match player {
                     None => { 
-                        is_boss_dead = boss.get(entity).is_some();
+                        is_boss_dead = boss.contains(entity);
                         if !is_boss_dead {
                             if let Some(victim_name) = names.get(entity) {
                                 log.entries.push(format!("{} dies!", &victim_name.name));

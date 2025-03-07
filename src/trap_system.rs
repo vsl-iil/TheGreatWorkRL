@@ -1,6 +1,6 @@
 use specs::prelude::*;
 
-use crate::{components::{Explosion, InstantHarm, LingeringEffect, Name, Position, ProvidesHealing, Puddle, Teleport}, map::Map};
+use crate::{components::{Explosion, InstantHarm, LingeringEffect, Position, ProvidesHealing, Puddle, Teleport}, map::Map};
 
 pub struct TrapSystem {}
 
@@ -29,35 +29,35 @@ impl<'a> System<'a> for TrapSystem {
                 // INFLICTS
                 // Heal
                 if let Some(healing) = heal.get(ent) {
-                    if heal.get(*mob).is_none() {
+                    if !heal.contains(*mob) {
                         heal.insert(*mob, *healing).expect("Unable to insert heal inflict on entity");
                     }
                 }
 
                 // Teleport
                 if let Some(teleporting) = tp.get(ent) {
-                    if tp.get(*mob).is_none() {
+                    if !tp.contains(*mob) {
                         tp.insert(*mob, *teleporting).expect("Unable to insert teleport inflict on entity");
                     }
                 }
 
                 // Lingering
                 if let Some(lingering) = linger.get(ent) {
-                    if linger.get(*mob).is_none() {
+                    if !linger.contains(*mob) {
                         linger.insert(*mob, *lingering).expect("Unable to insert lingering inflict on entity");
                     }
                 }
 
                 // Instant harm
                 if let Some(harming) = harm.get(ent) {
-                    if harm.get(*mob).is_none() {
+                    if !harm.contains(*mob) {
                         harm.insert(*mob, *harming).expect("Unable to insert harm inflict on entity");
                     }
                 }
 
                 // Exploding
                 if let Some(exploding) = explode.get(ent) {
-                    if explode.get(*mob).is_none() {
+                    if !explode.contains(*mob) {
                         explode.insert(*mob, *exploding).expect("Unable to insert explosion inflict on entity");
                     }
                 }
