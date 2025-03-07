@@ -11,7 +11,7 @@ pub const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
 #[cfg(not(debug_assertions))]
 pub const LEVELNUM: i32 = 8;
 #[cfg(debug_assertions)]
-pub const LEVELNUM: i32 = 2;
+pub const LEVELNUM: i32 = 3;
 
 #[derive(PartialEq, Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum TileType {

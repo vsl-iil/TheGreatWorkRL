@@ -323,6 +323,11 @@ impl State {
 
         let mut gamelog = self.ecs.write_resource::<GameLog>();
         gamelog.entries.push("You descend to a next level, and take a moment to heal.".to_owned());
+
+        if new_depth == LEVELNUM-1 {
+            gamelog.entries.push("You feel foul presence the level below.".to_owned());
+        }
+
         let mut stats = self.ecs.write_storage::<CombatStats>();
 
         if let Some(player_stats) = stats.get_mut(*player_entity) {
