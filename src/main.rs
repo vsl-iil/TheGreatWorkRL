@@ -4,8 +4,8 @@ use gui::draw_ui;
 use inventory_system::{InventorySystem, ItemDropSystem, ItemThrowSystem, ItemUseSystem};
 use map_indexing_system::MapIndexingSystem;
 use melee_combat_system::MeleeCombatSystem;
-use monster_ai_system::{BossAI, MonsterAI};
-use rltk::{GameState, Point, RandomNumberGenerator, Rltk};
+use monster_ai_system::{BossAI, LobberAI, MonsterAI};
+use rltk::{GameState, Point, Rltk};
 use specs::prelude::*;
 use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
 
@@ -245,6 +245,8 @@ impl State {
             runstate = *runstwriter;
         }
         if runstate == RunState::PlayerTurn {
+            let mut lobber = LobberAI {};
+            lobber.run_now(&self.ecs);
             let mut trap = TrapSystem {};
             trap.run_now(&self.ecs);
             let mut stain = StainEffect {};
@@ -402,6 +404,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<InstantHarm>();
     gs.ecs.register::<Explosion>();
     gs.ecs.register::<Bomber>();
+    gs.ecs.register::<Lobber>();
     gs.ecs.register::<Boss>();
     gs.ecs.register::<MacGuffin>();
     gs.ecs.register::<SimpleMarker<SerializeMe>>();

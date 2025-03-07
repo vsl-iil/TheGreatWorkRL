@@ -2,7 +2,7 @@ use rltk::{Point, RandomNumberGenerator, RGB};
 use specs::{ReadStorage, System};
 use specs::prelude::*;
 
-use crate::components::{Agitated, Bomber, Boss, BossState, Confusion, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Monster, Position, Potion, Renderable, SufferDamage, Viewshed, WantsToMelee, WantsToThrowItem};
+use crate::components::{Agitated, Bomber, Boss, BossState, Confusion, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Lobber, Monster, Name, Position, Potion, Renderable, SufferDamage, Teleport, Viewshed, WantsToMelee, WantsToThrowItem};
 use crate::gamelog::GameLog;
 use crate::map::Map;
 use crate::RunState;
@@ -90,6 +90,121 @@ impl<'a> System<'a> for MonsterAI {
 }
 
 
+pub struct LobberAI {}
+
+impl<'a> System<'a> for LobberAI {
+    type SystemData = ( WriteStorage<'a, Lobber>,
+                        Entities<'a>,
+                        WriteExpect<'a, GameLog>,
+                        ReadStorage<'a, Name>,
+                        ReadExpect<'a, Point>,
+                        WriteStorage<'a, WantsToThrowItem>,
+                        WriteStorage<'a, Potion>,
+                        WriteStorage<'a, Item>,
+                        WriteStorage<'a, Explosion>,
+                        WriteStorage<'a, InstantHarm>,
+                        WriteStorage<'a, Confusion>,
+                        WriteStorage<'a, Teleport>,
+                        WriteStorage<'a, LingeringEffect>,
+                        WriteStorage<'a, Renderable>,
+                        WriteExpect<'a, RandomNumberGenerator>,
+                        WriteStorage<'a, Monster>,
+                        WriteStorage<'a, Agitated>,
+                        WriteStorage<'a, Viewshed>
+                    );
+
+    fn run(&mut self, data: Self::SystemData) {
+        let (mut lobbers, entities, mut gamelog, names, playerpos, mut intentthrow, mut potions, mut items, mut explosion, mut harm, mut confusion, mut tp, mut linger, mut renders, mut rng, mut monsters, mut agitated, mut viewshed)= data;
+
+        let mut done_lobbing: Vec<Entity> = vec![];
+        for (ent, lob, viewshed) in (&entities, &mut lobbers, &mut viewshed).join() {
+            
+            let mut is_agitated = false;
+            if let Some(agitation) = agitated.get_mut(ent) {
+                agitation.turns -= 1;
+                if agitation.turns < 1 {
+                    agitated.remove(ent);
+                }
+            } else {
+                if viewshed.visible_tiles.contains(&*playerpos) {
+                    agitated.insert(ent, Agitated { turns: 5 }).expect("Unable to agitate enemy");
+                } 
+                is_agitated = false;
+            }
+
+            if viewshed.visible_tiles.contains(&*playerpos) || is_agitated {
+                lob.turns -= 1;
+                match lob.turns as u32 {
+                    3..=u32::MAX | 1 => {},
+                    2 => {
+                        let name = names.get(ent).map_or("someone", |n| &n.name);
+                        gamelog.entries.push(format!("{} is aiming with a flask...", name));
+                        lob.targetpos = Some(*playerpos);
+                    },
+                    0 => {
+                        let potion = entities.create();
+
+                        potions.insert(potion, Potion {}).expect("Unable to insert lobber potion");
+                        items.insert(potion, Item {}).expect("Unable to insert lobber potion item");
+
+                        let color;
+                        match rng.roll_dice(1, 24) {
+                            1..=4 => {
+                                explosion.insert(potion, Explosion { maxdmg: 8, radius: 4 }).expect("Unable to insert lobber potion explosion");
+                                color = RGB::named(rltk::ORANGE);
+                            }
+                            5..=12 => {
+                                harm.insert(potion, InstantHarm { dmg: 5 }).expect("Unable to insert lobber potion harm");
+                                color = RGB::named(rltk::DARKRED);
+                            }
+                            13..=19 => {
+                                confusion.insert(potion, Confusion { turns: 5 }).expect("Unable to insert lobber potion confuse");
+                                color = RGB::named(rltk::PINK);
+                            }
+                            20 => {
+                                tp.insert(potion, Teleport { safe: true }).expect("Unable to insert lobber potion tp");
+                                color = RGB::named(rltk::VIOLET);
+                            }
+                            _ => {
+                                let etype = match rng.roll_dice(1, 2) {
+                                    1 => {
+                                        color = RGB::named(rltk::RED);
+                                        LingerType::Fire
+                                    },
+                                    _ => {
+                                        color = RGB::named(rltk::GREEN);
+                                        LingerType::Poison
+                                    },
+                                };
+                                linger.insert(potion, LingeringEffect { etype, duration: 3, dmg: 3 }).expect("Unable to insert lobber potion linger");
+                            }
+                        }
+
+                        renders.insert(potion, Renderable { 
+                            glyph: rltk::to_cp437('!'), 
+                            fg: color,
+                            bg: RGB::named(rltk::BLACK), 
+                            render_order: 2 
+                        }).expect("Unable to insert lobber potion render");
+
+                        let target = lob.targetpos.unwrap_or(*playerpos);
+                        intentthrow.insert(ent, WantsToThrowItem { item: potion, target }).expect("Unable to insert lobber throw intent");
+                    
+                        done_lobbing.push(ent);
+                    }
+                }
+            } else {
+                lob.turns = 3;
+            }
+        }
+
+        for ent in done_lobbing {
+            lobbers.remove(ent);
+            monsters.insert(ent, Monster {}).expect("Unable to insert lobber into monsters");
+        }
+    }
+}
+
 pub struct BossAI {}
 
 impl<'a> System<'a> for BossAI {
@@ -163,10 +278,9 @@ impl<'a> System<'a> for BossAI {
                                 match turns % 4 {
                                     3 => {
                                         log.entries.push("The Cursed Alchemist is aiming with a flask...".to_owned());
-                                    }
-                                    2 => {
                                         boss.targetpos = Some(*player_pos);
                                     }
+                                    2 => { }
                                     1 => { 
                                         let potion = entities.create();
 

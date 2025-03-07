@@ -6,6 +6,7 @@ pub enum SpawnEntry {
     Goblin,
     Ork,
     Bomber,
+    Lobber,
     HealingPotion,
     // FireballScroll,
     ConfusionPotion,

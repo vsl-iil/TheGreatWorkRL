@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use rltk::{RandomNumberGenerator, RGB};
+use rltk::{to_cp437, RandomNumberGenerator, RGB};
 use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
 
-use crate::{components::{BlocksTile, Bomber, Boss, CombatStats, Confusion, Consumable, Explosion, InstantHarm, Item, LingerType, LingeringEffect, MacGuffin, Monster, Name, Player, Position, Potion, ProvidesHealing, Renderable, SerializeMe, Teleport, Viewshed}, map::{self, Map, TileType, MAPWIDTH}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
+use crate::{components::{BlocksTile, Bomber, Boss, CombatStats, Confusion, Consumable, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Lobber, MacGuffin, Monster, Name, Player, Position, Potion, ProvidesHealing, Renderable, SerializeMe, Teleport, Viewshed}, map::{self, Map, TileType, MAPWIDTH}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
 
 pub const MAX_MONSTERS: i32 = 4;
 
@@ -51,7 +51,31 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
             max_hp: 10,
             hp: 10,
             defence: 1,
-            power: 7
+            power: 8
+        })
+        .marked::<SimpleMarker<SerializeMe>>()
+        .build();
+}
+
+fn lobber(ecs: &mut World, x: i32, y: i32) {
+    ecs
+        .create_entity()
+        .with(Position { x, y })
+        .with(Renderable {
+            glyph: to_cp437('a'),
+            fg: RGB::named(rltk::RED),
+            bg: RGB::named(rltk::BLACK),
+            render_order: 1
+        })
+        .with(Viewshed { visible_tiles: vec![], range: 8, dirty: true })
+        .with(Lobber { turns: 4, targetpos: None })
+        .with(Name { name: "Thrall".to_owned() })
+        .with(BlocksTile {})
+        .with(CombatStats {
+            max_hp: 6,
+            hp: 6,
+            defence: 0,
+            power: 6
         })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
@@ -233,6 +257,8 @@ pub fn spawn_room(ecs: &mut World, room: &Rect, map: &mut Map, map_depth: i32) {
                 => ork(ecs, x, y),
             SpawnEntry::Bomber
                 => bomber(ecs, x, y),
+            SpawnEntry::Lobber
+                => lobber(ecs, x, y),
             // SpawnEntry::MissileScroll
             //     => magic_missile_scroll(ecs, spawn.0.0, spawn.0.1),
             SpawnEntry::HealingPotion
@@ -318,7 +344,7 @@ fn confusion_potion(ecs: &mut World, x: i32, y: i32) {
         .create_entity()
         .with(Position {x, y})
         .with(Renderable {
-            glyph: rltk::to_cp437('?'),
+            glyph: rltk::to_cp437('¡'),
             fg: RGB::named(rltk::PINK),
             bg: RGB::named(rltk::BLACK),
             render_order: 2
@@ -456,6 +482,7 @@ fn room_table(map_depth: i32) -> RandomTable {
                 .add(SpawnEntry::Goblin, 12)
                 .add(SpawnEntry::Ork, 1 + map_depth)
                 .add(SpawnEntry::Bomber, -3 + map_depth)
+                .add(SpawnEntry::Lobber, (map_depth + 4) / 2)
                 // Items
                 .add(SpawnEntry::HealingPotion, 7)
                 .add(SpawnEntry::LingeringPotion, 2 + map_depth)
@@ -476,4 +503,5 @@ fn boss_table() -> RandomTable {
                 .add(SpawnEntry::ConfusionPotion, 5)
                 .add(SpawnEntry::TeleportPotion, 2)
                 .add(SpawnEntry::Bomber, 2)
+                .add(SpawnEntry::Lobber, 2)
 }

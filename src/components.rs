@@ -39,6 +39,12 @@ pub struct Bomber {
     pub effect: Entity 
 }
 
+#[derive(Component, ConvertSaveload, Clone, Copy, Debug)]
+pub struct Lobber {
+    pub turns: u32,
+    pub targetpos: Option<Point>
+}
+
 #[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
 pub struct Boss {
     pub state: BossState,

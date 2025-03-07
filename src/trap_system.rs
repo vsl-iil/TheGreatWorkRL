@@ -10,7 +10,6 @@ impl<'a> System<'a> for TrapSystem {
                        Entities<'a>,
                        ReadStorage<'a, Position>,
                        WriteExpect<'a, Map>,
-                       ReadStorage<'a, Name>,
                     
                        WriteStorage<'a, ProvidesHealing>,
                        WriteStorage<'a, Teleport>,
@@ -20,7 +19,7 @@ impl<'a> System<'a> for TrapSystem {
                        );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut puddles, entities, pos, map, names, mut heal, mut tp, mut linger, mut harm, mut explode) = data;
+        let (mut puddles, entities, pos, map, mut heal, mut tp, mut linger, mut harm, mut explode) = data;
 
         for(ent, puddle, pos) in (&entities, &mut puddles, &pos).join() {
             puddle.lifetime -= 1;
