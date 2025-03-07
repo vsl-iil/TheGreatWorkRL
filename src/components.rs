@@ -41,7 +41,8 @@ pub struct Bomber {
 
 #[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
 pub struct Boss {
-    pub state: BossState
+    pub state: BossState,
+    pub targetpos: Option<Point>
 }
 
 #[derive(Component, Serialize, Deserialize, Clone, Debug)]

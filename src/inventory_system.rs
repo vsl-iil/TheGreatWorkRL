@@ -300,58 +300,70 @@ impl<'a> System<'a> for ItemThrowSystem {
                     puddles.push(puddle);
                 }
             }
-            for mob in map.tile_content[map.xy_idx(x, y)].iter() {
-                // INFLICTS
-                // Список эффектов: ProvidesHealing, Teleport, Lingering, Harm, Explosion
+            // INFLICTS
+            // Список эффектов: ProvidesHealing, Teleport, Lingering, Harm, Explosion
 
-                // Heal
-                if let Some(&heal) = healing.get(to_throw.item) {
+            // Heal
+            if let Some(&heal) = healing.get(to_throw.item) {
+                for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                     healing.insert(*mob, heal).expect("Unable to apply healing inflict to entity");
-                    for pd in puddles.iter() {
-                        healing.insert(*pd, heal).expect("Unable to insert puddle heal");
-                    }
                 }
+                for pd in puddles.iter() {
+                    healing.insert(*pd, heal).expect("Unable to insert puddle heal");
+                }
+            }
 
-                // Teleport
-                if let Some(&tp) = teleport.get(to_throw.item) {
+            // Teleport
+            if let Some(&tp) = teleport.get(to_throw.item) {
+                for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                     teleport.insert(*mob, tp).expect("Unable to apply teleport inflict to entity");
-                    for pd in puddles.iter() {
-                        teleport.insert(*pd, tp).expect("Unable to insert puddle tp");
-                    }
                 }
+                for pd in puddles.iter() {
+                    teleport.insert(*pd, tp).expect("Unable to insert puddle tp");
+                }
+            }
 
-                // Lingering
-                if let Some(&lingering) = linger.get(to_throw.item) {
+            // Lingering
+            if let Some(&lingering) = linger.get(to_throw.item) {
+                for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                     linger.insert(*mob, lingering).expect("Unable to apply lingering inflict to entity");
-                    for pd in puddles.iter() {
-                        linger.insert(*pd, lingering).expect("Unable to insert puddle linger");
-                    }
                 }
+                for pd in puddles.iter() {
+                    linger.insert(*pd, lingering).expect("Unable to insert puddle linger");
+                }
+            }
 
-                // Instant damage
-                if let Some(&dmg) = harm.get(to_throw.item) {
+            // Instant damage
+            if let Some(&dmg) = harm.get(to_throw.item) {
+                for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                     harm.insert(*mob, dmg).expect("Unable to apply harm inflict to entity");
-                    for pd in puddles.iter() {
-                        harm.insert(*pd, dmg).expect("Unable to insert puddle dmg");
-                    }
                 }
+                for pd in puddles.iter() {
+                    harm.insert(*pd, dmg).expect("Unable to insert puddle dmg");
+                }
+            }
 
-                // Explosion
-                if let Some(&boom) = explosion.get(to_throw.item) {
+            // Explosion
+            if let Some(&boom) = explosion.get(to_throw.item) {
+                for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                     explosion.insert(*mob, boom).expect("Unable to apply explosion inflict to entity");
-                    for pd in puddles.iter() {
-                        explosion.insert(*pd, boom).expect("Unable to insert puddle explosion");
-                    }
                 }
+                for pd in puddles.iter() {
+                    explosion.insert(*pd, boom).expect("Unable to insert puddle explosion");
+                }
+            }
 
-                // Confusion
-                if let Some(&confuse) = confusion.get(to_throw.item) {
+            // Confusion
+            if let Some(&confuse) = confusion.get(to_throw.item) {
+                for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                     confusion.insert(*mob, confuse).expect("Unable to confuse entity");
-                    for pd in puddles.iter() {
-                        confusion.insert(*pd, confuse).expect("Unable to insert puddle confuse");
-                    }
                 }
+                for pd in puddles.iter() {
+                    confusion.insert(*pd, confuse).expect("Unable to insert puddle confuse");
+                }
+            }
 
+            for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                 // Эй, кто в меня кинул?!
                 agitate.insert(*mob, Agitated { turns: 2 }).expect("Unable to agitate enemy after throw.");
             }
