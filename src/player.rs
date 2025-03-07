@@ -1,6 +1,6 @@
 use rltk::{Point, RandomNumberGenerator, Rltk, VirtualKeyCode};
 use specs::prelude::*;
-use crate::{components::{CombatStats, Confusion, Item, Monster, Viewshed, WantsToMelee, WantsToPickupItem}, gamelog::GameLog, map::TileType, RunState};
+use crate::{components::{CombatStats, Confusion, InBackpack, Item, Monster, Viewshed, WantsToMelee, WantsToPickupItem}, gamelog::GameLog, map::TileType, RunState};
 
 use super::{Position, Player, Map, State};
 use std::cmp::{min, max};
@@ -99,6 +99,9 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
                 => return RunState::ShowHelp,
             VirtualKeyCode::T 
                 => return RunState::ShowThrowItem,
+            #[cfg(debug_assertions)]
+            VirtualKeyCode::N
+                => return RunState::NextLevel,
             _ => return RunState::AwaitingInput 
         }
     }
@@ -124,8 +127,13 @@ fn get_item(ecs: &mut World) {
     match target_item {
         None => gamelog.entries.push("There's nothing to pick up.".to_string()),
         Some(item) => {
-            let mut pickup = ecs.write_storage::<WantsToPickupItem>();
-            pickup.insert(item, WantsToPickupItem { collected_by: *player_entity, item }).expect("Unable to insert want to pickup");
+            let backpack = ecs.read_storage::<InBackpack>();
+            if backpack.join().count() > 12 {
+                gamelog.entries.push("You are overburdened!".to_owned());
+            } else {
+                let mut pickup = ecs.write_storage::<WantsToPickupItem>();
+                pickup.insert(item, WantsToPickupItem { collected_by: *player_entity, item }).expect("Unable to insert want to pickup");
+            }
         }
     }
 }

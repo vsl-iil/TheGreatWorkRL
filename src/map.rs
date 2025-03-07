@@ -11,7 +11,7 @@ pub const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
 #[cfg(not(debug_assertions))]
 pub const LEVELNUM: i32 = 8;
 #[cfg(debug_assertions)]
-pub const LEVELNUM: i32 = 3;
+pub const LEVELNUM: i32 = 8;
 
 #[derive(PartialEq, Clone, Copy, Serialize, Deserialize, Debug)]
 pub enum TileType {
@@ -188,11 +188,17 @@ impl Map {
     }
 }
 
-pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
+pub fn draw_map(ecs: &World, ctx: &mut Rltk, map_depth: i32) {
     let map = ecs.fetch::<Map>();
 
     let mut x = 0;
     let mut y = 0;
+
+    let tint = (
+        f32::max(0.0, 0.1 - f32::powf(0.25 * map_depth as f32 - 1.25, 2.0)),
+        f32::max(0.0, 0.1 - f32::powf(0.25 * map_depth as f32 - 0.45, 2.0)),
+        f32::max(0.0, 0.1 - f32::powf(0.25 * map_depth as f32 - 0.85, 2.0)),
+    );
 
     for (idx, tile) in map.tiles.iter().enumerate() {
         if map.revealed_tiles[idx] {
@@ -205,11 +211,15 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk) {
                 }
                 TileType::Wall => {
                     glyph = rltk::to_cp437('#');
-                    fg = RGB::from_f32(0.8, 0.8, 0.95);
+                    fg = RGB::from_f32(0.8+tint.0, 0.8+tint.1, 0.8+tint.2);
                 }
                 TileType::DownStairs => {
                     glyph = rltk::to_cp437('>');
-                    fg = RGB::from_f32(0.8, 0.8, 0.95);
+                    if map_depth == LEVELNUM-1 {
+                        fg = RGB::named(rltk::RED);
+                    } else {
+                        fg = RGB::from_f32(0.8, 0.8, 0.95);
+                    }
                 },
                 TileType::BossSpawner => {
                     glyph = rltk::to_cp437('A');

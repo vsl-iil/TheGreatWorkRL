@@ -51,10 +51,10 @@ impl GameState for State {
         match newrunstate {
             RunState::MainMenu {..} => {},
             _ => {
-                    draw_map(&self.ecs, ctx);
                     let positions = self.ecs.read_storage::<Position>();
                     let renderables = self.ecs.read_storage::<Renderable>();
                     let map = self.ecs.fetch::<Map>();
+                    draw_map(&self.ecs, ctx, map.depth);
                     // let player_pos = self.ecs.fetch::<Position>();
 
                     let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
