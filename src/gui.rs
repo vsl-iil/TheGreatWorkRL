@@ -122,7 +122,9 @@ pub fn show_inventory(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option
     ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
 
     let mut usable: Vec<Entity> = vec![];
-    for (j, (entity, _pack, name)) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity).enumerate() {
+    let mut items = (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity).collect::<Vec<_>>();
+    items.sort_by(|a, b| a.2.name.cmp(&b.2.name));
+    for (j, (entity, _pack, name)) in items.into_iter().enumerate() {
         ctx.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
         ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
         ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
@@ -165,7 +167,9 @@ pub fn drop_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Enti
     ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
 
     let mut droppable: Vec<Entity> = vec![];
-    for (j, (entity, _pack, name)) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity).enumerate() {
+    let mut items = (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity).collect::<Vec<_>>();
+    items.sort_by(|a, b| a.2.name.cmp(&b.2.name));
+    for (j, (entity, _pack, name)) in items.into_iter().enumerate() {
         ctx.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
         ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
         ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
@@ -373,7 +377,9 @@ pub fn throw_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Ent
     ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
 
     let mut throwable: Vec<Entity> = vec![];
-    for (j, (entity, _pack, name)) in (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity).enumerate() {
+    let mut items = (&entities, &backpack, &names).join().filter(|item| item.1.owner == *player_entity).collect::<Vec<_>>();
+    items.sort_by(|a, b| a.2.name.cmp(&b.2.name));
+    for (j, (entity, _pack, name)) in items.into_iter().enumerate() {
         ctx.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
         ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
         ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
@@ -420,7 +426,9 @@ pub fn mix_potions(gs: &mut State, ctx: &mut Rltk, selected: Option<Entity>) -> 
     ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
 
     let mut mixable: Vec<Entity> = vec![];
-    for (j, (entity, _pack, name, _potion)) in (&entities, &backpack, &names, &potions).join().filter(|item| item.1.owner == *player_entity).enumerate() {
+    let mut items = (&entities, &backpack, &names, &potions).join().filter(|item| item.1.owner == *player_entity).collect::<Vec<_>>();
+    items.sort_by(|a, b| a.2.name.cmp(&b.2.name));
+    for (j, (entity, _pack, name, _potion)) in items.into_iter().enumerate() {
 
         let (bg, glyph) = if selected.is_some_and(|sel| sel == entity) {
             (RGB::named(rltk::GRAY), 65+j as rltk::FontCharType)

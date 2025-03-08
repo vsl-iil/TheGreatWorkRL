@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 use rand::{seq::SliceRandom, SeedableRng};
 use rltk::RGB;
@@ -56,6 +56,8 @@ impl<'a> System<'a> for AlchemySystem {
             entities.delete(*first).expect("Unable to delete first mix component");
             entities.delete(*second).expect("Unable to delete second mix component");
 
+            log.entries.push(format!("You mix {} and {}.", names.get(*first).map_or("something", |n| &n.name), names.get(*second).map_or("something", |n| &n.name)));
+
             // special case
             // heal + harm combo
             if  heal.contains(*first) && harm.contains(*second) ||
@@ -107,8 +109,16 @@ impl<'a> System<'a> for AlchemySystem {
 
             if specials.contains_key(&contains) {
                 effects_first = vec![*specials.get(&contains).unwrap()];
+                let name = match effects_first[0] {
+                    Strength(_) => "Strength",
+                    Invulnerability(_) => "Invulnerability",
+                    Heal(_) => "Health",
+                    _ => "something",
+                };
+                log.entries.push(format!("You get a potion of {name}!"));
             } else {
                 effects_first.append(&mut effects_second);
+                log.entries.push(format!("Two potions mix evenly."));
             }
 
             effects_first.sort();
@@ -238,16 +248,40 @@ fn generate_combos(seed: u64) -> HashMap<u8, PotionEffect> {
     let mut hashmap = HashMap::new();
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
-    let mut combos: Vec<u8> = (1..=5).map(|p| u8::pow(2, p as u32)).collect();
+    let fields: Vec<u8> = (1..=5).map(|p| u8::pow(2, p as u32)).collect();
 
-    combos.shuffle(&mut rng);
-
-    let mut all_except_tp = combos.iter().filter(|n| **n != 2);
-    let mut random_pair = combos.choose_multiple(&mut rng, 2);
-    hashmap.insert(all_except_tp.next().unwrap() | 2, PotionEffect::Invulnerability(Invulnerability { turns: 3 }));
-    hashmap.insert(all_except_tp.next().unwrap() | 2, PotionEffect::Strength(Strength { turns: 3 }));
-    hashmap.insert(random_pair.next().unwrap() | random_pair.next().unwrap(), PotionEffect::Heal(ProvidesHealing { heal_amount: 3 }));
+    let mut combos = [0u8; 3];
+    for i in 0..=2 {
+        let mut tmp = fields.choose_multiple(&mut rng, 2).fold(0, |acc, x| {acc | *x});
+        while combos.contains(&tmp) {
+            tmp = fields.choose_multiple(&mut rng, 2).fold(0, |acc, x| {acc | *x});
+        }
+        combos[i] = tmp;
+    }
+    
+    hashmap.insert(combos[0], PotionEffect::Invulnerability(Invulnerability { turns: 3 }));
+    hashmap.insert(combos[1], PotionEffect::Strength(Strength { turns: 3 }));
+    hashmap.insert(combos[2], PotionEffect::Heal(ProvidesHealing { heal_amount: 3 }));
 
     hashmap
 
 }
+
+// fn bitfield_to_string(bitfield: u8) -> String {
+//     let variants = vec![
+//         "Health",
+//         "Teleport",
+//         "Confusion",
+//         "Harm",
+//         "Linger",
+//         "Explosion"
+//     ];
+//     let mut names = vec![];
+//     for (i, shift) in (0..=5).enumerate() {
+//         if bitfield & (1 << shift) != 0 {
+//             names.push(variants[i]);
+//         }
+//     }
+
+//     names.join(" + ")
+// }

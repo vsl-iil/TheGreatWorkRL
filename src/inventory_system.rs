@@ -55,6 +55,9 @@ impl<'a> System<'a> for ItemUseSystem {
                         ReadStorage<'a, InflictsDamage>,
                         WriteStorage<'a, Confusion>,
                         WriteStorage<'a, Teleport>,
+                        WriteStorage<'a, InstantHarm>,
+                        WriteStorage<'a, LingeringEffect>,
+                        WriteStorage<'a, Explosion>,
                         WriteStorage<'a, Invulnerability>,
                         WriteStorage<'a, Strength>,
                         WriteStorage<'a, Position>,
@@ -67,7 +70,7 @@ impl<'a> System<'a> for ItemUseSystem {
                     );
 
  fn run(&mut self, data: Self::SystemData) {
-    let (player_entity, mut gamelog, entities, mut want_use, names, mut viewsheds, healing, damaging, mut confusion, teleport, mut invuln, mut strength, mut playerpos, aoe, mut suffering, consumables, mut combat_stats, mut rng, mut map) = data;
+    let (player_entity, mut gamelog, entities, mut want_use, names, mut viewsheds, healing, damaging, mut confusion, teleport, mut harm, mut linger, mut explosion, mut invuln, mut strength, mut playerpos, aoe, mut suffering, consumables, mut combat_stats, mut rng, mut map) = data;
 
     for (entity, usable) in (&entities, &want_use).join() {
         let mut targets = vec![];
@@ -95,6 +98,37 @@ impl<'a> System<'a> for ItemUseSystem {
                 }
             }
         }
+
+        let item_harms = harm.get(usable.item).map(|h| *h);
+        match item_harms {
+            None => {},
+            Some(item_harms) => {
+                for target in targets.iter() {
+                    harm.insert(*target, item_harms).expect("Unable to harm used");
+                }
+            }
+        }
+
+        let item_lingers = linger.get(usable.item).map(|h| *h);
+        match item_lingers {
+            None => {},
+            Some(item_lingers) => {
+                for target in targets.iter() {
+                    linger.insert(*target, item_lingers).expect("Unable to linger used");
+                }
+            }
+        }
+
+        let item_explodes = explosion.get(usable.item).map(|h| *h);
+        match item_explodes {
+            None => {},
+            Some(item_explodes) => {
+                for target in targets.iter() {
+                    explosion.insert(*target, item_explodes).expect("Unable to explode used");
+                }
+            }
+        }
+
 
         let item_heals = healing.get(usable.item);
         match item_heals {
