@@ -233,13 +233,21 @@ impl GameState for State {
                         => {},
                 }
             }
+            RunState::GameOver
+                => {
+                    match gui::gameover(ctx) {
+                        gui::ItemMenuResult::Cancel => ::std::process::exit(0),
+                        _ => {}
+                    }
+                    
+                }
         }
 
+        newrunstate = damage_system::clean_up_dead(&mut self.ecs, newrunstate);
         {
             let mut runwriter = self.ecs.fetch_mut::<RunState>();
             *runwriter = newrunstate;
         }
-        damage_system::clean_up_dead(&mut self.ecs);
 
     }
 }
@@ -383,7 +391,8 @@ pub enum RunState {
     SaveGame,
     NextLevel,
     ShowThrowItem,
-    ShowMix(Option<Entity>)
+    ShowMix(Option<Entity>),
+    GameOver
 }
 
 #[derive(PartialEq, Clone, Copy)]

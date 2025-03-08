@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use rand::{seq::SliceRandom, SeedableRng};
 use rltk::RGB;

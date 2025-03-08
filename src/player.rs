@@ -145,28 +145,29 @@ fn get_item(ecs: &mut World) {
     }
 }
 
+// no food - no heal
 fn skip_turn(ecs: &mut World) -> RunState {
-    let mut can_heal = true;
-    let player_entity = ecs.fetch::<Entity>();
-    let viewshed = ecs.read_storage::<Viewshed>();
-    let player_viewshed = viewshed.get(*player_entity);
-    let monsters = ecs.read_storage::<Monster>();
-    let map = ecs.fetch::<Map>();
+    // let mut can_heal = true;
+    // let player_entity = ecs.fetch::<Entity>();
+    // let viewshed = ecs.read_storage::<Viewshed>();
+    // let player_viewshed = viewshed.get(*player_entity);
+    // let monsters = ecs.read_storage::<Monster>();
+    // let map = ecs.fetch::<Map>();
 
-    if let Some(viewshed) = player_viewshed {
-        for tile in viewshed.visible_tiles.iter() {
-            let idx = map.xy_idx(tile.x, tile.y);
-            for entity_id in map.tile_content[idx].iter() {
-                can_heal &= !monsters.contains(*entity_id);
-            }
-        }
-    }
+    // if let Some(viewshed) = player_viewshed {
+    //     for tile in viewshed.visible_tiles.iter() {
+    //         let idx = map.xy_idx(tile.x, tile.y);
+    //         for entity_id in map.tile_content[idx].iter() {
+    //             can_heal &= !monsters.contains(*entity_id);
+    //         }
+    //     }
+    // }
 
-    if can_heal {
-        if let Some(stats) = ecs.write_storage::<CombatStats>().get_mut(*player_entity) {
-            stats.hp = min(stats.hp + 1, stats.max_hp);
-        }
-    }
+    // if can_heal {
+    //     if let Some(stats) = ecs.write_storage::<CombatStats>().get_mut(*player_entity) {
+    //         stats.hp = min(stats.hp + 1, stats.max_hp);
+    //     }
+    // }
 
     RunState::PlayerTurn
 }

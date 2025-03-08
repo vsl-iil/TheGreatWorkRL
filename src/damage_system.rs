@@ -1,7 +1,7 @@
 use rltk::Point;
 use specs::prelude::*;
 
-use crate::{components::{Boss, CombatStats, Invulnerability, Name, Player, Position, Potion, SufferDamage, WantsToThrowItem}, gamelog::GameLog, map::{Map, TileType}};
+use crate::{components::{Boss, CombatStats, Invulnerability, Name, Player, Position, Potion, SufferDamage, WantsToThrowItem}, gamelog::GameLog, map::{Map, TileType}, RunState};
 
 pub struct DamageSystem {}
 
@@ -33,9 +33,10 @@ impl<'a> System<'a> for DamageSystem {
     }
 }
 
-pub fn clean_up_dead(ecs: &mut World) {
+pub fn clean_up_dead(ecs: &mut World, runstate: RunState) -> RunState {
     let mut dead: Vec<Entity> = vec![];
     let mut is_boss_dead = false;
+    let mut is_player_dead = false;
     {
         let names = ecs.read_storage::<Name>();
         let boss = ecs.read_storage::<Boss>();
@@ -62,6 +63,7 @@ pub fn clean_up_dead(ecs: &mut World) {
                         if log.entries.iter().last().is_some_and(|msg| msg != &msg_dead) {
                             log.entries.push(msg_dead);
                         }
+                        is_player_dead = true;
                     },
                 }
             }
@@ -72,6 +74,12 @@ pub fn clean_up_dead(ecs: &mut World) {
 
     for victim in dead {
         ecs.delete_entity(victim).expect("Unable to delete dead entity");
+    }
+
+    if is_player_dead {
+        RunState::GameOver
+    } else {
+        runstate
     }
 }
 

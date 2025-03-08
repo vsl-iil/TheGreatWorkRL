@@ -470,6 +470,20 @@ pub fn mix_potions(gs: &mut State, ctx: &mut Rltk, selected: Option<Entity>) -> 
     }
 }
 
+pub fn gameover(ctx: &mut Rltk) -> ItemMenuResult {
+    ctx.draw_box(35, 20, 10, 3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    ctx.print_color_centered(22, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "You died!");
+
+    match ctx.key {
+        None => ItemMenuResult::NoResponse,
+        Some(k) => match k {
+            VirtualKeyCode::Escape | VirtualKeyCode::Return
+                => ItemMenuResult::Cancel,
+            _ => ItemMenuResult::NoResponse
+        }
+    }
+}
+
 fn truncate_str(name: String) -> String {
     match name.char_indices().nth(20) {
         None => name,
