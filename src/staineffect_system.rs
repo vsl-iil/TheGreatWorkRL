@@ -3,7 +3,7 @@ use std::i32;
 use rltk::{Point, RandomNumberGenerator};
 use specs::prelude::*;
 
-use crate::{components::{CombatStats, Explosion, InstantHarm, LingerType, LingeringEffect, Name, Position, Potion, ProvidesHealing, Puddle, SufferDamage, Teleport, Viewshed}, gamelog::GameLog, map::Map};
+use crate::{components::{CombatStats, Explosion, InstantHarm, Invulnerability, LingerType, LingeringEffect, Name, Position, Potion, ProvidesHealing, Puddle, Strength, SufferDamage, Teleport, Viewshed}, gamelog::GameLog, map::Map};
 
 pub struct StainEffect {}
 
@@ -30,10 +30,12 @@ impl<'a> System<'a> for StainEffect {
                         WriteStorage<'a, LingeringEffect>,
                         WriteStorage<'a, InstantHarm>,
                         WriteStorage<'a, Explosion>,
+                        WriteStorage<'a, Invulnerability>,
+                        WriteStorage<'a, Strength>,
                       );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut combat, puddle, entities, mut rng, mut map, mut pos, mut viewsheds, mut log, names, mut suffer, mut playerpos, player_entity, potions,   mut heal, mut teleport, mut linger, mut harm, mut explosion) = data;
+        let (mut combat, puddle, entities, mut rng, mut map, mut pos, mut viewsheds, mut log, names, mut suffer, mut playerpos, player_entity, potions,   mut heal, mut teleport, mut linger, mut harm, mut explosion, mut invuln, mut strength) = data;
 
         for (ents, stat, _puddle) in (&entities, &mut combat, !&puddle).join() {
             // INFLICTS
@@ -45,7 +47,7 @@ impl<'a> System<'a> for StainEffect {
             }
 
             // Lingering effect (fire, poison)
-            if linger.get(ents).is_some() {
+            if linger.contains(ents) {
                 let LingeringEffect {etype, duration, dmg};
                 {
                     let lingering = linger.get_mut(ents).unwrap();
@@ -116,7 +118,7 @@ impl<'a> System<'a> for StainEffect {
                             let dmg = exploding.maxdmg / (2.0f32 * distance) as i32;
                             SufferDamage::new_damage(&mut suffer, *mob, dmg);
 
-                            if potions.get(*mob).is_some() && rng.roll_dice(1, 2) == 1 {
+                            if potions.contains(*mob) && rng.roll_dice(1, 2) == 1 {
                                 // entities.build_entity().with(c, storage)
                             }
                         }
@@ -162,6 +164,23 @@ impl<'a> System<'a> for StainEffect {
 
                 teleport.remove(ents);
             }
+
+            // Invulnerability
+            if let Some(invul) = invuln.get_mut(ents) {
+                invul.turns -= 1;
+                if invul.turns < 0 {
+                    invuln.remove(ents);
+                }
+            }
+
+            // Strength
+            if let Some(strong) = strength.get_mut(ents) {
+                strong.turns -= 1;
+                if strong.turns < 0 {
+                    strength.remove(ents);
+                }
+            }
+
         }
     }
 }

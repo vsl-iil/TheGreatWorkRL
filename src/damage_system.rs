@@ -1,7 +1,7 @@
 use rltk::Point;
 use specs::prelude::*;
 
-use crate::{components::{Boss, CombatStats, Name, Player, Position, Potion, SufferDamage, WantsToThrowItem}, gamelog::GameLog, map::{Map, TileType}};
+use crate::{components::{Boss, CombatStats, Invulnerability, Name, Player, Position, Potion, SufferDamage, WantsToThrowItem}, gamelog::GameLog, map::{Map, TileType}};
 
 pub struct DamageSystem {}
 
@@ -10,13 +10,14 @@ impl<'a> System<'a> for DamageSystem {
                         WriteStorage<'a, SufferDamage>,
                         ReadStorage<'a, Potion>,
                         WriteStorage<'a, WantsToThrowItem>,
+                        ReadStorage<'a, Invulnerability>,
                         Entities<'a>,
                         ReadStorage<'a, Position>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut stats, mut damage, potions, mut intentthrow, entities, pos) = data;
+        let (mut stats, mut damage, potions, mut intentthrow, invuln, entities, pos) = data;
 
-        for (stats, damage) in (&mut stats, &damage).join() {
+        for (stats, damage, _invul) in (&mut stats, &damage, !&invuln).join() {
             for dmg in damage.amount.iter() {
                 stats.hp = stats.hp.saturating_sub(*dmg);
             }

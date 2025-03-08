@@ -1,7 +1,7 @@
 use rltk::{Point, RandomNumberGenerator, RGB};
 use specs::prelude::*;
 
-use crate::{components::{Agitated, AreaOfEffect, CombatStats, Confusion, Consumable, Explosion, InBackpack, InflictsDamage, InstantHarm, LingeringEffect, MacGuffin, Name, Position, Potion, ProvidesHealing, Puddle, Renderable, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem, Weight}, gamelog::GameLog, map::Map};
+use crate::{components::{Agitated, AreaOfEffect, CombatStats, Confusion, Consumable, Explosion, InBackpack, InflictsDamage, InstantHarm, Invulnerability, LingeringEffect, MacGuffin, Name, Position, Potion, ProvidesHealing, Puddle, Renderable, Strength, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem, Weight}, gamelog::GameLog, map::Map};
 
 pub struct InventorySystem {}
 
@@ -55,6 +55,8 @@ impl<'a> System<'a> for ItemUseSystem {
                         ReadStorage<'a, InflictsDamage>,
                         WriteStorage<'a, Confusion>,
                         WriteStorage<'a, Teleport>,
+                        WriteStorage<'a, Invulnerability>,
+                        WriteStorage<'a, Strength>,
                         WriteStorage<'a, Position>,
                         ReadStorage<'a, AreaOfEffect>,
                         WriteStorage<'a, SufferDamage>,
@@ -65,7 +67,7 @@ impl<'a> System<'a> for ItemUseSystem {
                     );
 
  fn run(&mut self, data: Self::SystemData) {
-    let (player_entity, mut gamelog, entities, mut want_use, names, mut viewsheds, healing, damaging, mut confusion, teleport, mut playerpos, aoe, mut suffering, consumables, mut combat_stats, mut rng, mut map) = data;
+    let (player_entity, mut gamelog, entities, mut want_use, names, mut viewsheds, healing, damaging, mut confusion, teleport, mut invuln, mut strength, mut playerpos, aoe, mut suffering, consumables, mut combat_stats, mut rng, mut map) = data;
 
     for (entity, usable) in (&entities, &want_use).join() {
         let mut targets = vec![];
@@ -194,6 +196,36 @@ impl<'a> System<'a> for ItemUseSystem {
             }
         }
 
+        let item_gives_invul = invuln.get(usable.item).map(|i| *i);
+        match item_gives_invul {
+            None => {},
+            Some(invul) => {
+                for target in targets.iter() {
+                    if combat_stats.contains(*target) {
+                        invuln.insert(*target, invul).expect("Unable to insert invulnerabilty on target");
+                        if *target == *player_entity {
+                            gamelog.entries.push("You are invulnerable!".to_owned());
+                        }
+                    }
+                }
+            }
+        }
+
+        let item_gives_strength = strength.get(usable.item).map(|i| *i);
+        match item_gives_strength {
+            None => {},
+            Some(strong) => {
+                for target in targets.iter() {
+                    if combat_stats.contains(*target) {
+                        strength.insert(*target, strong).expect("Unable to insert strength on target");
+                        if *target == *player_entity {
+                            gamelog.entries.push("You feel stronger!".to_owned());
+                        }
+                    }
+                }
+            }
+        }
+
         if consumables.contains(usable.item) {
             entities.delete(usable.item).expect("Unable to delete consumable");
         }
@@ -265,6 +297,8 @@ impl<'a> System<'a> for ItemThrowSystem {
                         WriteStorage<'a, InstantHarm>,
                         WriteStorage<'a, Explosion>,
                         WriteStorage<'a, Confusion>,
+                        WriteStorage<'a, Invulnerability>,
+                        WriteStorage<'a, Strength>,
                         ReadStorage<'a, Potion>,
                         WriteStorage<'a, Renderable>,
                         WriteStorage<'a, Puddle>,
@@ -272,7 +306,7 @@ impl<'a> System<'a> for ItemThrowSystem {
                     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, mut intentthrow, map, mut backpack, mut pos, mut suffer, weight, mut agitate,   mut healing, mut teleport, mut linger, mut harm, mut explosion, mut confusion, potions, mut render, mut puddle, mut rng) = data;
+        let (entities, mut intentthrow, map, mut backpack, mut pos, mut suffer, weight, mut agitate,   mut healing, mut teleport, mut linger, mut harm, mut explosion, mut confusion, mut invuln, mut strength, potions, mut render, mut puddle, mut rng) = data;
 
         for to_throw in (&mut intentthrow).join() {
             let Point {x, y} = to_throw.target;
@@ -363,6 +397,26 @@ impl<'a> System<'a> for ItemThrowSystem {
                 }
             }
 
+            // Invuln
+            if let Some(&invul) = invuln.get(to_throw.item) {
+                for mob in map.tile_content[map.xy_idx(x, y)].iter() {
+                    invuln.insert(*mob, invul).expect("Unable to make entity invulnerable");
+                }
+                for pd in puddles.iter() {
+                    invuln.insert(*pd, invul).expect("Unable to insert puddle invul");
+                }
+            }
+
+            // Strength
+            if let Some(&strong) = strength.get(to_throw.item) {
+                for mob in map.tile_content[map.xy_idx(x, y)].iter() {
+                    strength.insert(*mob, strong).expect("Unable to make entity strong");
+                }
+                for pd in puddles.iter() {
+                    strength.insert(*pd, strong).expect("Unable to insert puddle strength");
+                }
+            }
+
             for mob in map.tile_content[map.xy_idx(x, y)].iter() {
                 // Эй, кто в меня кинул?!
                 agitate.insert(*mob, Agitated { turns: 2 }).expect("Unable to agitate enemy after throw.");
@@ -383,7 +437,7 @@ impl<'a> System<'a> for ItemThrowSystem {
             
             // damage based on weight
             if let Some(target) = map.tile_content[map.xy_idx(x, y)].first() {
-                SufferDamage::new_damage(&mut suffer, *target, weight.get(to_throw.item).map_or(2, |w| w.0 * 2));
+                SufferDamage::new_damage(&mut suffer, *target, weight.get(to_throw.item).map_or(1, |w| w.0));
             }
 
             if is_potion {

@@ -1,3 +1,4 @@
+use alchemy_system::AlchemySystem;
 use damage_system::DamageSystem;
 use gamelog::GameLog;
 use gui::draw_ui;
@@ -5,6 +6,7 @@ use inventory_system::{InventorySystem, ItemDropSystem, ItemThrowSystem, ItemUse
 use map_indexing_system::MapIndexingSystem;
 use melee_combat_system::MeleeCombatSystem;
 use monster_ai_system::{BossAI, LobberAI, MonsterAI};
+use rand::RngCore;
 use rltk::{GameState, Point, Rltk};
 use specs::prelude::*;
 use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
@@ -25,13 +27,14 @@ mod map_indexing_system;
 mod melee_combat_system;
 mod damage_system;
 mod inventory_system;
+mod saveload_system;
+mod staineffect_system;
+mod trap_system;
+mod alchemy_system;
 mod gui;
 mod gamelog;
 mod spawner;
-mod saveload_system;
 mod random_table;
-mod staineffect_system;
-mod trap_system;
 
 
 pub struct State {
@@ -196,12 +199,37 @@ impl GameState for State {
                     gui::ItemMenuResult::Selected => {
                         let item = result.1.unwrap();
                         let ws = self.ecs.read_storage::<Weight>();
-                        let weight = ws.get(item).map_or(0, |w| w.0);
+                        let weight = ws.get(item).map_or(1, |w| w.0);
                         newrunstate = RunState::ShowTargeting { range: 6-weight, item, targettype: TargetType::Throw };
                     },
                     gui::ItemMenuResult::Cancel    
                         => newrunstate = RunState::AwaitingInput,
                     gui::ItemMenuResult::NoResponse
+                        => {},
+                }
+            },
+            RunState::ShowMix(first) => {
+                let result = gui::mix_potions(self, ctx, first);
+                match result.0 {
+                    gui::ItemMenuResult::Selected   
+                        => {
+                            if result.1.is_some() && result.2.is_some() {
+                                let player = self.ecs.fetch::<Entity>();
+                                let mut intent = self.ecs.write_storage::<WantsToMixPotions>();
+                                intent.insert(*player, WantsToMixPotions { 
+                                    first: result.1.unwrap(), 
+                                    second: result.2.unwrap() 
+                                }).expect("Unable to insert intent to mix");
+                                newrunstate = RunState::PlayerTurn;
+                            } else if result.1.is_some() {
+                                newrunstate = RunState::ShowMix(result.1);
+                            } else {
+                                newrunstate = RunState::ShowMix(None);
+                            }
+                        },
+                    gui::ItemMenuResult::Cancel
+                        => newrunstate = RunState::AwaitingInput, 
+                    gui::ItemMenuResult::NoResponse 
                         => {},
                 }
             }
@@ -238,6 +266,8 @@ impl State {
         throw.run_now(&self.ecs);
         let mut boss = BossAI {};
         boss.run_now(&self.ecs);
+        let mut alchemy = AlchemySystem {};
+        alchemy.run_now(&self.ecs);
 
         let runstate;
         {
@@ -352,7 +382,8 @@ pub enum RunState {
     MainMenu{ menu_selection: gui::MainMenuSelection },
     SaveGame,
     NextLevel,
-    ShowThrowItem
+    ShowThrowItem,
+    ShowMix(Option<Entity>)
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -360,6 +391,8 @@ pub enum TargetType {
     Use,
     Throw
 }
+
+pub struct AlchemySeed(u64);
 
 fn main() -> rltk::BError {
     use rltk::RltkBuilder;
@@ -381,15 +414,17 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Name>();
     gs.ecs.register::<BlocksTile>();
     gs.ecs.register::<CombatStats>();
-    gs.ecs.register::<WantsToMelee>();
     gs.ecs.register::<SufferDamage>();
     gs.ecs.register::<Item>();
     gs.ecs.register::<ProvidesHealing>();
     gs.ecs.register::<Consumable>();
-    gs.ecs.register::<WantsToPickupItem>();
     gs.ecs.register::<InBackpack>();
+    gs.ecs.register::<WantsToMelee>();
+    gs.ecs.register::<WantsToPickupItem>();
     gs.ecs.register::<WantsToUseItem>();
     gs.ecs.register::<WantsToDropItem>();
+    gs.ecs.register::<WantsToThrowItem>();
+    gs.ecs.register::<WantsToMixPotions>();
     gs.ecs.register::<Ranged>();
     gs.ecs.register::<InflictsDamage>();
     gs.ecs.register::<AreaOfEffect>();
@@ -399,10 +434,11 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Weight>();
     gs.ecs.register::<Puddle>();
     gs.ecs.register::<Potion>();
-    gs.ecs.register::<WantsToThrowItem>();
     gs.ecs.register::<LingeringEffect>();
     gs.ecs.register::<InstantHarm>();
     gs.ecs.register::<Explosion>();
+    gs.ecs.register::<Invulnerability>();
+    gs.ecs.register::<Strength>();
     gs.ecs.register::<Bomber>();
     gs.ecs.register::<Lobber>();
     gs.ecs.register::<Boss>();
@@ -416,6 +452,7 @@ fn main() -> rltk::BError {
     let (player_x, player_y) = map.rooms[0].center();
     
     gs.ecs.insert(rltk::RandomNumberGenerator::new());
+    gs.ecs.insert(AlchemySeed(rand::thread_rng().next_u64()));
 
     gs.ecs.insert(Point::new(player_x, player_y));
     let player_entity = spawner::player(&mut gs.ecs, player_x, player_y);

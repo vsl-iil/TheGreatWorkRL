@@ -116,23 +116,23 @@ pub struct Potion {}
 // ---=== Эффекты мобов / эффекты зелий ===---
 //
 
-#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProvidesHealing {
     pub heal_amount: i32,
 }
 
 /// Safe teleport will always transport you to an empty place.
 /// Unsafe may teleport you inside a wall.
-#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Teleport {
     pub safe: bool
 }
 
-#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LingerType { Fire, Poison }
 
 // Продолжительный наносящий урон эффект (огонь, отравление)
-#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LingeringEffect {
     pub etype: LingerType,
     pub duration: i32,
@@ -140,16 +140,26 @@ pub struct LingeringEffect {
 }
 
 // Моментальный урон. Имеет особое взаимодействие с зельем лечения...
-#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InstantHarm {
     pub dmg: i32,
 }
 
 // Boom!
-#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Explosion {
     pub maxdmg: i32,
     pub radius: i32
+}
+
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Invulnerability {
+    pub turns: i32
+}
+
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Strength {
+    pub turns: i32
 }
 
 // TODO polymorph???
@@ -179,9 +189,15 @@ pub struct WantsToDropItem {
 }
 
 #[derive(Component, Debug, ConvertSaveload)]
-pub struct  WantsToThrowItem {
+pub struct WantsToThrowItem {
     pub item: Entity,
     pub target: Point
+}
+
+#[derive(Component, Debug, ConvertSaveload)]
+pub struct WantsToMixPotions {
+    pub first: Entity,
+    pub second: Entity
 }
 
 #[derive(Component, Debug, ConvertSaveload, Clone)]
@@ -199,7 +215,7 @@ pub struct AreaOfEffect {
     pub radius: i32
 }
 
-#[derive(Component, Debug, ConvertSaveload, Clone, Copy)]
+#[derive(Component, Debug, ConvertSaveload, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Confusion {
     pub turns: i32
 }

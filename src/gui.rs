@@ -1,7 +1,7 @@
 use rltk::{Point, Rltk, VirtualKeyCode, RGB};
 use specs::prelude::*;
 
-use crate::{components::{CombatStats, InBackpack, Name, Player, Position, Viewshed}, gamelog::GameLog, map::{Map, MAPWIDTH}, RunState, State};
+use crate::{components::{CombatStats, InBackpack, Name, Player, Position, Potion, Viewshed, Weight}, gamelog::GameLog, map::{Map, MAPWIDTH}, RunState, State};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum MainMenuSelection {
@@ -110,6 +110,7 @@ pub fn show_inventory(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option
     let names = gs.ecs.read_storage::<Name>();
     let backpack = gs.ecs.read_storage::<InBackpack>();
     let entities = gs.ecs.entities();
+    let weight = gs.ecs.read_storage::<Weight>();
 
     let inventory = (&backpack, &names).join().filter(|item| item.0.owner == *player_entity);
     let count = inventory.count() as i32;
@@ -117,6 +118,7 @@ pub fn show_inventory(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option
     let mut y = 25 - (count / 2);
     ctx.draw_box(15, y-2, 31, count+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
     ctx.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Inventory");
+    ctx.print_color(40, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Weight");
     ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
 
     let mut usable: Vec<Entity> = vec![];
@@ -125,7 +127,8 @@ pub fn show_inventory(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option
         ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
         ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
 
-        ctx.print(21, y, name.name.to_string());
+        ctx.print(21, y, truncate_str(name.name.to_string()));
+        ctx.print(45, y, weight.get(entity).map_or(1, |w| w.0));
         usable.push(entity);
         y += 1;
     }
@@ -150,6 +153,7 @@ pub fn drop_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Enti
     let names = gs.ecs.read_storage::<Name>();
     let backpack = gs.ecs.read_storage::<InBackpack>();
     let entities = gs.ecs.entities();
+    let weight = gs.ecs.read_storage::<Weight>();
 
     let inventory = (&backpack, &names).join().filter(|item| item.0.owner == *player_entity);
     let count = inventory.count() as i32;
@@ -157,6 +161,7 @@ pub fn drop_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Enti
     let mut y = 25 - (count / 2);
     ctx.draw_box(15, y-2, 31, count+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
     ctx.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Drop which item?");
+    ctx.print_color(40, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Weight");
     ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
 
     let mut droppable: Vec<Entity> = vec![];
@@ -165,7 +170,8 @@ pub fn drop_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Enti
         ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
         ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
 
-        ctx.print(21, y, name.name.to_string());
+        ctx.print(21, y, truncate_str(name.name.to_string()));
+        ctx.print(45, y, weight.get(entity).map_or(1, |w| w.0));
         droppable.push(entity);
         y += 1;
     }
@@ -331,6 +337,7 @@ pub fn keybinds_menu(ctx: &mut Rltk) -> ItemMenuResult {
         formstr!("i", "open inventory"),
         formstr!("d", "drop an item"),
         formstr!("t", "throw an item"),
+        formstr!("m", "mix potions"),
         formstr!("esc", "pause"),
         formstr!("/", "help")
     ];
@@ -353,6 +360,7 @@ pub fn throw_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Ent
     let player_entity = gs.ecs.fetch::<Entity>();
     let names = gs.ecs.read_storage::<Name>();
     let backpack = gs.ecs.read_storage::<InBackpack>();
+    let weight = gs.ecs.read_storage::<Weight>();
     let entities = gs.ecs.entities();
 
     let inventory = (&backpack, &names).join().filter(|item| item.0.owner == *player_entity);
@@ -361,6 +369,7 @@ pub fn throw_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Ent
     let mut y = 25 - (count / 2);
     ctx.draw_box(15, y-2, 31, count+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
     ctx.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Throw which item?");
+    ctx.print_color(40, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Weight");
     ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
 
     let mut throwable: Vec<Entity> = vec![];
@@ -369,7 +378,8 @@ pub fn throw_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Ent
         ctx.set(18, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType);
         ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
 
-        ctx.print(21, y, name.name.to_string());
+        ctx.print(21, y, truncate_str(name.name.to_string()));
+        ctx.print(45, y, weight.get(entity).map_or(1, |w| w.0));
         throwable.push(entity);
         y += 1;
     }
@@ -387,5 +397,79 @@ pub fn throw_menu(gs: &mut State, ctx: &mut Rltk) -> (ItemMenuResult, Option<Ent
             }
         }
     }
+}
 
+pub fn mix_potions(gs: &mut State, ctx: &mut Rltk, selected: Option<Entity>) -> (ItemMenuResult, Option<Entity>, Option<Entity>) {
+    let player_entity = gs.ecs.fetch::<Entity>();
+    let names = gs.ecs.read_storage::<Name>();
+    let backpack = gs.ecs.read_storage::<InBackpack>();
+    let potions = gs.ecs.read_storage::<Potion>();
+    let entities = gs.ecs.entities();
+    let weight = gs.ecs.read_storage::<Weight>();
+
+    let inventory = (&backpack, &names, &potions).join().filter(|item| item.0.owner == *player_entity);
+    let count = inventory.count() as i32;
+
+    let mut y = 25 - (count / 2);
+    ctx.draw_box(15, y-2, 31, count+3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    if selected.is_none() {
+        ctx.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Choose first ingredient...");
+    } else {
+        ctx.print_color(18, y-2, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Choose second ingredient...");
+    }
+    ctx.print_color(18, y+count + 1, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
+
+    let mut mixable: Vec<Entity> = vec![];
+    for (j, (entity, _pack, name, _potion)) in (&entities, &backpack, &names, &potions).join().filter(|item| item.1.owner == *player_entity).enumerate() {
+
+        let (bg, glyph) = if selected.is_some_and(|sel| sel == entity) {
+            (RGB::named(rltk::GRAY), 65+j as rltk::FontCharType)
+        } else {
+            (RGB::named(rltk::BLACK), 97+j as rltk::FontCharType)
+        };
+        ctx.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
+        ctx.set(18, y, RGB::named(rltk::YELLOW), bg, glyph);
+        ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
+
+        ctx.print(21, y, truncate_str(name.name.to_string()));
+        ctx.print(45, y, weight.get(entity).map_or(1, |w| w.0));
+        mixable.push(entity);
+        y += 1;
+    }
+
+    match ctx.key {
+        None => (ItemMenuResult::NoResponse, selected, None),
+        Some(key) => match key {
+            VirtualKeyCode::Escape => {
+                (ItemMenuResult::Cancel, None, None)
+            },
+            _ => {
+                let selection = rltk::letter_to_option(key);
+                if selection > -1 && selection < count {
+                    let selection = mixable[selection as usize];
+                    if selected.is_some() {
+                        if selected.unwrap() == selection {
+                            return (ItemMenuResult::Selected, None, None);
+                        }
+                        return (ItemMenuResult::Selected, selected, Some(selection))
+                    } else {
+                        return (ItemMenuResult::Selected, Some(selection), None)
+                    }
+                }
+                (ItemMenuResult::NoResponse, selected, None)
+            }
+        }
+    }
+}
+
+fn truncate_str(name: String) -> String {
+    match name.char_indices().nth(20) {
+        None => name,
+        Some((idx, _)) => {
+            let mut n = name[..idx].to_string();
+            n.push_str("...");
+
+            n
+        }
+    }
 }

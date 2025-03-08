@@ -1,6 +1,6 @@
 use rltk::{Point, RandomNumberGenerator, Rltk, VirtualKeyCode};
 use specs::prelude::*;
-use crate::{components::{CombatStats, Confusion, InBackpack, Item, Monster, Viewshed, WantsToMelee, WantsToPickupItem}, gamelog::GameLog, map::TileType, RunState};
+use crate::{components::{CombatStats, Confusion, InBackpack, Item, Monster, Viewshed, WantsToMelee, WantsToPickupItem, Weight}, gamelog::GameLog, map::TileType, RunState};
 
 use super::{Position, Player, Map, State};
 use std::cmp::{min, max};
@@ -99,6 +99,8 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
                 => return RunState::ShowHelp,
             VirtualKeyCode::T 
                 => return RunState::ShowThrowItem,
+            VirtualKeyCode::M
+                => return RunState::ShowMix(None),
             #[cfg(debug_assertions)]
             VirtualKeyCode::N
                 => return RunState::NextLevel,
@@ -128,7 +130,12 @@ fn get_item(ecs: &mut World) {
         None => gamelog.entries.push("There's nothing to pick up.".to_string()),
         Some(item) => {
             let backpack = ecs.read_storage::<InBackpack>();
-            if backpack.join().count() > 12 {
+            let weight = ecs.read_storage::<Weight>();
+            let mut total_weight = 0;
+            for (_inpack, weight) in (&backpack, &weight).join() {
+                total_weight += weight.0;
+            }
+            if total_weight + weight.get(item).map_or(1, |w| w.0) > 12 {
                 gamelog.entries.push("You are overburdened!".to_owned());
             } else {
                 let mut pickup = ecs.write_storage::<WantsToPickupItem>();
@@ -150,7 +157,7 @@ fn skip_turn(ecs: &mut World) -> RunState {
         for tile in viewshed.visible_tiles.iter() {
             let idx = map.xy_idx(tile.x, tile.y);
             for entity_id in map.tile_content[idx].iter() {
-                can_heal &= monsters.get(*entity_id).is_none();
+                can_heal &= !monsters.contains(*entity_id);
             }
         }
     }

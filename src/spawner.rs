@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use rltk::{to_cp437, RandomNumberGenerator, RGB};
 use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
 
-use crate::{components::{BlocksTile, Bomber, Boss, CombatStats, Confusion, Consumable, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Lobber, MacGuffin, Monster, Name, Player, Position, Potion, ProvidesHealing, Renderable, SerializeMe, Teleport, Viewshed}, map::{self, Map, TileType, MAPWIDTH}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
+use crate::{components::{BlocksTile, Bomber, Boss, CombatStats, Confusion, Consumable, Explosion, InstantHarm, Item, LingerType, LingeringEffect, Lobber, MacGuffin, Monster, Name, Player, Position, Potion, ProvidesHealing, Renderable, SerializeMe, Teleport, Viewshed, Weight}, map::{self, Map, TileType, MAPWIDTH}, random_table::{RandomTable, SpawnEntry}, rect::Rect};
 
 pub const MAX_MONSTERS: i32 = 4;
 
@@ -192,6 +192,7 @@ fn spawn_mcguffin(ecs: &mut World, x: i32, y: i32) {
         })
         .with(Item {})
         .with(MacGuffin {})
+        .with(Weight(3))
         .with(Name { name: "The Philosopher's Stone".to_owned() })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
@@ -295,6 +296,7 @@ fn healing_potion(ecs: &mut World, x: i32, y: i32) {
         .with(Item {})
         .with(Potion {})
         .with(Consumable {})
+        .with(Weight(1))
         .with(ProvidesHealing { heal_amount: 2 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
@@ -353,6 +355,7 @@ fn confusion_potion(ecs: &mut World, x: i32, y: i32) {
         .with(Item {})
         .with(Potion {})
         .with(Consumable {})
+        .with(Weight(1))
         // .with(Ranged { range: 6 })
         .with(Confusion { turns: 4 })
         .marked::<SimpleMarker<SerializeMe>>()
@@ -379,6 +382,7 @@ fn teleport_potion(ecs: &mut World, x: i32, y: i32) {
         .with(Item {})
         .with(Potion {})
         .with(Consumable {})
+        .with(Weight(1))
         .with(Teleport { safe })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
@@ -417,6 +421,7 @@ fn lingering_potion(ecs: &mut World, x: i32, y: i32) {
         .with(Item {})
         .with(Potion {})
         .with(Consumable {})
+        .with(Weight(1))
         .with(LingeringEffect { etype, duration: 5, dmg: 3 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
@@ -436,6 +441,7 @@ fn harm_potion(ecs: &mut World, x: i32, y: i32) {
         .with(Item {})
         .with(Potion {})
         .with(Consumable {})
+        .with(Weight(1))
         .with(InstantHarm { dmg: 7 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();
@@ -455,6 +461,7 @@ fn explosion_potion(ecs: &mut World, x: i32, y: i32) {
         .with(Item {})
         .with(Potion {})
         .with(Consumable {})
+        .with(Weight(1))
         .with(Explosion { maxdmg: 10, radius: 4 })
         .marked::<SimpleMarker<SerializeMe>>()
         .build();

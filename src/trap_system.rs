@@ -1,6 +1,6 @@
 use specs::prelude::*;
 
-use crate::{components::{Explosion, InstantHarm, LingeringEffect, Position, ProvidesHealing, Puddle, Teleport}, map::Map};
+use crate::{components::{Explosion, InstantHarm, Invulnerability, LingeringEffect, Position, ProvidesHealing, Puddle, Strength, Teleport}, map::Map};
 
 pub struct TrapSystem {}
 
@@ -15,11 +15,13 @@ impl<'a> System<'a> for TrapSystem {
                        WriteStorage<'a, Teleport>,
                        WriteStorage<'a, LingeringEffect>,
                        WriteStorage<'a, InstantHarm>,
-                       WriteStorage<'a, Explosion>
+                       WriteStorage<'a, Explosion>,
+                       WriteStorage<'a, Invulnerability>,
+                       WriteStorage<'a, Strength>
                        );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut puddles, entities, pos, map, mut heal, mut tp, mut linger, mut harm, mut explode) = data;
+        let (mut puddles, entities, pos, map, mut heal, mut tp, mut linger, mut harm, mut explode, mut invuln, mut strength) = data;
 
         for(ent, puddle, pos) in (&entities, &mut puddles, &pos).join() {
             puddle.lifetime -= 1;
@@ -59,6 +61,20 @@ impl<'a> System<'a> for TrapSystem {
                 if let Some(exploding) = explode.get(ent) {
                     if !explode.contains(*mob) {
                         explode.insert(*mob, *exploding).expect("Unable to insert explosion inflict on entity");
+                    }
+                }
+
+                // Invul
+                if let Some(invul) = invuln.get(ent) {
+                    if !invuln.contains(*mob) {
+                        invuln.insert(*mob, *invul).expect("Unable to insert invul inflict on entity");
+                    }
+                }
+
+                // Strength
+                if let Some(strong) = strength.get(ent) {
+                    if !strength.contains(*mob) {
+                        strength.insert(*mob, *strong).expect("Unable to insert strength inflict on entity");
                     }
                 }
             }
