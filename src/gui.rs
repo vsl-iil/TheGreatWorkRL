@@ -347,6 +347,7 @@ pub fn keybinds_menu(ctx: &mut Rltk) -> ItemMenuResult {
     ctx.print_color_centered(5, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Keybinds");
     ctx.print_color(18, 30, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Press ESC to close");
 
+    #[cfg(not(target_arch = "wasm32"))]
     let strings: Vec<String> = vec![
         formstr!("←↑↓→", "move"),
         formstr!(".", "descend to next level"),
@@ -357,7 +358,21 @@ pub fn keybinds_menu(ctx: &mut Rltk) -> ItemMenuResult {
         formstr!("t", "throw an item"),
         formstr!("m", "mix potions"),
         formstr!("esc", "pause"),
-        formstr!("/", "help")
+        formstr!("/", "help"),
+    ];
+
+    #[cfg(target_arch = "wasm32")]
+    let strings: Vec<String> = vec![
+        formstr!("←↑↓→", "move"),
+        formstr!(">", "descend to next level"),
+        formstr!("g | ,", "pick up an item"),
+        formstr!("space", "wait a turn"),
+        formstr!("i", "open inventory"),
+        formstr!("d", "drop an item"),
+        formstr!("t", "throw an item"),
+        formstr!("m", "mix potions"),
+        formstr!("esc", "pause"),
+        formstr!("?", "help"),
     ];
 
     for (i, s) in strings.iter().enumerate() {

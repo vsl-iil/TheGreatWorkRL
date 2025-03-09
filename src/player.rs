@@ -77,6 +77,7 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
             VirtualKeyCode::Numpad3 
                 => try_move_player(1, 1, &mut gs.ecs),
 
+            #[cfg(not(target_arch = "wasm32"))]
             VirtualKeyCode::Period => {
                 if try_next_level(&gs.ecs) {
                     return RunState::NextLevel;
@@ -84,6 +85,17 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
                     return RunState::AwaitingInput;
                 }
             }
+            #[cfg(target_arch = "wasm32")]
+            VirtualKeyCode::Period => {
+                if ctx.shift {
+                    if try_next_level(&gs.ecs) {
+                        return RunState::NextLevel;
+                    } else {
+                        return RunState::AwaitingInput;
+                    }
+                }
+            }
+
             VirtualKeyCode::Numpad5 | VirtualKeyCode::Space
                 // => return skip_turn(&mut gs.ecs),
                 => return RunState::PlayerTurn,
@@ -96,8 +108,18 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
                 => return RunState::ShowDropItem,
             VirtualKeyCode::Escape
                 => return RunState::SaveGame,
+            #[cfg(not(target_arch = "wasm32"))]
             VirtualKeyCode::Slash
                 => return RunState::ShowHelp,
+            #[cfg(target_arch = "wasm32")]
+            VirtualKeyCode::Slash
+                => {
+                    if ctx.shift {
+                        return RunState::ShowHelp
+                    } else {
+                        return RunState::AwaitingInput 
+                    }
+                },
             VirtualKeyCode::T 
                 => return RunState::ShowThrowItem,
             VirtualKeyCode::M
