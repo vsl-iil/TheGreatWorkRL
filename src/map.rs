@@ -195,9 +195,9 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk, map_depth: i32) {
     let mut y = 0;
 
     let tint = (
-        f32::max(0.0, 0.1 - f32::powf(0.25 * map_depth as f32 - 1.25, 2.0)),
-        f32::max(0.0, 0.1 - f32::powf(0.25 * map_depth as f32 - 0.45, 2.0)),
-        f32::max(0.0, 0.1 - f32::powf(0.25 * map_depth as f32 - 0.85, 2.0)),
+        f32::max(0.0, 0.15 - f32::powf(0.25 * map_depth as f32 - 1.25, 2.0)),
+        f32::max(0.0, 0.15 - f32::powf(0.25 * map_depth as f32 - 0.45, 2.0)),
+        f32::max(0.0, 0.15 - f32::powf(0.25 * map_depth as f32 - 0.85, 2.0)),
     );
 
     for (idx, tile) in map.tiles.iter().enumerate() {
@@ -212,7 +212,7 @@ pub fn draw_map(ecs: &World, ctx: &mut Rltk, map_depth: i32) {
                 TileType::Wall => {
                     // glyph = rltk::to_cp437('#');
                     glyph = wall_glyph(&*map, x, y);
-                    fg = RGB::from_f32(0.8+tint.0, 0.8+tint.1, 0.8+tint.2);
+                    fg = RGB::from_f32(0.85+tint.0, 0.85+tint.1, 0.85+tint.2);
                 }
                 TileType::DownStairs => {
                     glyph = rltk::to_cp437('>');

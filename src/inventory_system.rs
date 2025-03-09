@@ -462,7 +462,7 @@ impl<'a> System<'a> for ItemThrowSystem {
                 }
             }
 
-            for mob in map.tile_content[map.xy_idx(x, y)].iter() {
+            for mob in map.tile_content[map.xy_idx(x, y)].iter().filter(|e| !potions.contains(**e) && !puddle.contains(**e)) {
                 if !agitate.contains(*mob) {
                     pbuilder.request(x, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), rltk::to_cp437('!'), 200.0);
                 }
@@ -471,7 +471,7 @@ impl<'a> System<'a> for ItemThrowSystem {
             }
 
             let color = render.get(to_throw.item).map_or(RGB::named(rltk::GREEN), |r| r.fg);
-
+            
             for pd in puddles.iter() {
                 render.insert(*pd, Renderable { 
                     glyph: rltk::to_cp437(' '), 
@@ -482,11 +482,11 @@ impl<'a> System<'a> for ItemThrowSystem {
 
                 puddle.insert(*pd, Puddle { lifetime: 3 }).expect("Unable to insert puddle lifetime");
             }
-            
+
             // damage based on weight
-            if let Some(target) = map.tile_content[map.xy_idx(x, y)].first() {
+            if let Some(target) = map.tile_content[map.xy_idx(x, y)].iter().filter(|e| !puddle.contains(**e) ).next() {
                 SufferDamage::new_damage(&mut suffer, *target, weight.get(to_throw.item).map_or(1, |w| w.0));
-            }
+            } 
 
             if is_potion {
                 entities.delete(to_throw.item).expect("Unable to delete thrown entity");

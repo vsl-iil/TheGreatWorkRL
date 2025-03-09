@@ -339,13 +339,13 @@ pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
 pub fn keybinds_menu(ctx: &mut Rltk) -> ItemMenuResult {
     macro_rules! formstr {
         ($key:literal, $desc:literal) => {
-            format!("{:5} - {}", $key, $desc)
+            format!("{:^5} - {}", $key, $desc)
         };
     }
 
-    ctx.draw_box(15, 5, 50, 25, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
-    ctx.print_color_centered(5, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Keybinds");
-    ctx.print_color(18, 30, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "Press ESC to close");
+    ctx.draw_box(15, 5, 50, 22, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    ctx.print_color_centered(5, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Keybinds");
+    ctx.print_color(18, 27, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Press ESC to close");
 
     #[cfg(not(target_arch = "wasm32"))]
     let strings: Vec<String> = vec![
