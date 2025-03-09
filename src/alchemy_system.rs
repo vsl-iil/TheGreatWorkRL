@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rand::{seq::SliceRandom, SeedableRng};
+// use rand::{seq::SliceRandom, SeedableRng};
 use rltk::RGB;
 use specs::prelude::*;
 
@@ -247,14 +247,17 @@ fn mix_colors(color1: RGB, color2: RGB) -> RGB {
 fn generate_combos(seed: u64) -> HashMap<u8, PotionEffect> {
     let mut hashmap = HashMap::new();
 
-    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    // let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    let mut rng = rltk::RandomNumberGenerator::seeded(seed);
     let fields: Vec<u8> = (1..=5).map(|p| u8::pow(2, p as u32)).collect();
 
     let mut combos = [0u8; 3];
     for i in 0..=2 {
-        let mut tmp = fields.choose_multiple(&mut rng, 2).fold(0, |acc, x| {acc | *x});
+        let mut tmp = rng.random_slice_entry(&fields).unwrap() | rng.random_slice_entry(&fields).unwrap();
+        // let mut tmp = fields.choose_multiple(&mut rng, 2).fold(0, |acc, x| {acc | *x});
         while combos.contains(&tmp) {
-            tmp = fields.choose_multiple(&mut rng, 2).fold(0, |acc, x| {acc | *x});
+            // tmp = fields.choose_multiple(&mut rng, 2).fold(0, |acc, x| {acc | *x});
+            tmp = rng.random_slice_entry(&fields).unwrap() | rng.random_slice_entry(&fields).unwrap();
         }
         combos[i] = tmp;
     }

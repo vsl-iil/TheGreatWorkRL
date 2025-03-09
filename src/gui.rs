@@ -262,7 +262,18 @@ pub fn main_menu(gs: &mut State, ctx: &mut Rltk) -> MainMenuResult {
 
     ctx.print_color_centered(15, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "The Great Work");
 
-    if let RunState::MainMenu { menu_selection: selection } = *runstate {
+    if let RunState::MainMenu { menu_selection: mut selection } = *runstate {
+        if !game_exists {
+            selection = MainMenuSelection::NewGame;
+        }
+        #[cfg(target_arch = "wasm32")]
+        if selection == MainMenuSelection::NewGame {
+            ctx.print_color_centered(24, RGB::named(rltk::BLACK), RGB::named(rltk::YELLOW), " Continue ");
+        } else {
+            ctx.print_color_centered(24, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), " Continue ");
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
         if selection == MainMenuSelection::NewGame {
             ctx.print_color_centered(24, RGB::named(rltk::BLACK), RGB::named(rltk::YELLOW), " New Game ");
         } else {
@@ -430,13 +441,13 @@ pub fn mix_potions(gs: &mut State, ctx: &mut Rltk, selected: Option<Entity>) -> 
     items.sort_by(|a, b| a.2.name.cmp(&b.2.name));
     for (j, (entity, _pack, name, _potion)) in items.into_iter().enumerate() {
 
-        let (bg, glyph) = if selected.is_some_and(|sel| sel == entity) {
-            (RGB::named(rltk::GRAY), 65+j as rltk::FontCharType)
+        let (fg, bg, glyph) = if selected.is_some_and(|sel| sel == entity) {
+            (RGB::named(rltk::BLACK), RGB::named(rltk::YELLOW), 65+j as rltk::FontCharType)
         } else {
-            (RGB::named(rltk::BLACK), 97+j as rltk::FontCharType)
+            (RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), 97+j as rltk::FontCharType)
         };
         ctx.set(17, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437('('));
-        ctx.set(18, y, RGB::named(rltk::YELLOW), bg, glyph);
+        ctx.set(18, y, fg, bg, glyph);
         ctx.set(19, y, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), rltk::to_cp437(')'));
 
         ctx.print(21, y, truncate_str(name.name.to_string()));

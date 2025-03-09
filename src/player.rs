@@ -1,6 +1,6 @@
 use rltk::{Point, RandomNumberGenerator, Rltk, VirtualKeyCode};
 use specs::prelude::*;
-use crate::{components::{CombatStats, Confusion, InBackpack, Item, Monster, Viewshed, WantsToMelee, WantsToPickupItem, Weight}, gamelog::GameLog, map::TileType, RunState};
+use crate::{components::{CombatStats, Confusion, InBackpack, Item, Viewshed, WantsToMelee, WantsToPickupItem, Weight}, gamelog::GameLog, map::TileType, RunState};
 
 use super::{Position, Player, Map, State};
 use std::cmp::{min, max};
@@ -85,7 +85,8 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) -> RunState {
                 }
             }
             VirtualKeyCode::Numpad5 | VirtualKeyCode::Space
-                => return skip_turn(&mut gs.ecs),
+                // => return skip_turn(&mut gs.ecs),
+                => return RunState::PlayerTurn,
             
             VirtualKeyCode::G | VirtualKeyCode::Comma 
                 => get_item(&mut gs.ecs),
@@ -146,7 +147,7 @@ fn get_item(ecs: &mut World) {
 }
 
 // no food - no heal
-fn skip_turn(ecs: &mut World) -> RunState {
+// fn skip_turn(ecs: &mut World) -> RunState {
     // let mut can_heal = true;
     // let player_entity = ecs.fetch::<Entity>();
     // let viewshed = ecs.read_storage::<Viewshed>();
@@ -169,8 +170,8 @@ fn skip_turn(ecs: &mut World) -> RunState {
     //     }
     // }
 
-    RunState::PlayerTurn
-}
+    // RunState::PlayerTurn
+// }
 
 pub fn try_next_level(ecs: &World) -> bool {
     let Point {x: player_x, y: player_y} = *ecs.fetch::<Point>();

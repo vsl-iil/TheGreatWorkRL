@@ -6,7 +6,7 @@ use inventory_system::{InventorySystem, ItemDropSystem, ItemThrowSystem, ItemUse
 use map_indexing_system::MapIndexingSystem;
 use melee_combat_system::MeleeCombatSystem;
 use monster_ai_system::{BossAI, LobberAI, MonsterAI};
-use rand::RngCore;
+// use rand::RngCore;
 use rltk::{GameState, Point, Rltk};
 use specs::prelude::*;
 use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
@@ -460,8 +460,9 @@ fn main() -> rltk::BError {
     let mut map = Map::new_map_rooms_and_corridors(1);
     let (player_x, player_y) = map.rooms[0].center();
     
-    gs.ecs.insert(rltk::RandomNumberGenerator::new());
-    gs.ecs.insert(AlchemySeed(rand::thread_rng().next_u64()));
+    let mut rng = rltk::RandomNumberGenerator::new();
+    gs.ecs.insert(AlchemySeed(rng.next_u64()));
+    gs.ecs.insert(rng);
 
     gs.ecs.insert(Point::new(player_x, player_y));
     let player_entity = spawner::player(&mut gs.ecs, player_x, player_y);
