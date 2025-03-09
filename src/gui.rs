@@ -363,11 +363,9 @@ pub fn keybinds_menu(ctx: &mut Rltk) -> ItemMenuResult {
 
     match ctx.key {
         None => ItemMenuResult::NoResponse,
-        Some(key)
-             => match key {
-                rltk::VirtualKeyCode::Escape => ItemMenuResult::Cancel,
-                _ => ItemMenuResult::NoResponse
-             }
+        Some(rltk::VirtualKeyCode::Escape)
+             => ItemMenuResult::Cancel,
+        Some(_) => ItemMenuResult::NoResponse
     }
 }
 
@@ -487,11 +485,9 @@ pub fn gameover(ctx: &mut Rltk) -> ItemMenuResult {
 
     match ctx.key {
         None => ItemMenuResult::NoResponse,
-        Some(k) => match k {
-            VirtualKeyCode::Escape | VirtualKeyCode::Return
-                => ItemMenuResult::Cancel,
-            _ => ItemMenuResult::NoResponse
-        }
+        Some(VirtualKeyCode::Escape | VirtualKeyCode::Return) 
+             => ItemMenuResult::Cancel,
+        Some(_) => ItemMenuResult::NoResponse
     }
 }
 

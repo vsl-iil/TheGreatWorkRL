@@ -92,11 +92,7 @@ impl GameState for State {
             }
             RunState::ShowHelp => {
                 let result = gui::keybinds_menu(ctx);
-                match result {
-                    gui::ItemMenuResult::Cancel
-                        => newrunstate = RunState::AwaitingInput,
-                    _   => {}
-                }
+                if result == gui::ItemMenuResult::Cancel { newrunstate = RunState::AwaitingInput; }
             }
             RunState::ShowInventory => {
                 let result = gui::show_inventory(self, ctx);
@@ -235,11 +231,9 @@ impl GameState for State {
             }
             RunState::GameOver
                 => {
-                    match gui::gameover(ctx) {
-                        gui::ItemMenuResult::Cancel => ::std::process::exit(0),
-                        _ => {}
+                    if gui::gameover(ctx) == gui::ItemMenuResult::Cancel {
+                        ::std::process::exit(0);
                     }
-                    
                 }
         }
 

@@ -118,12 +118,12 @@ impl<'a> System<'a> for AlchemySystem {
                 log.entries.push(format!("You get a potion of {name}!"));
             } else {
                 effects_first.append(&mut effects_second);
-                log.entries.push(format!("Two potions mix evenly."));
+                log.entries.push("Two potions mix evenly.".to_owned());
             }
 
             effects_first.sort();
             effects_first = effects_first.iter().fold(vec![], |mut acc, effect| {
-                if acc.len() > 0 && *acc.last().unwrap() == *effect {
+                if !acc.is_empty() && *acc.last().unwrap() == *effect {
                     let new_effect = acc.pop();
                     match new_effect {
                         None => return vec![],
@@ -159,7 +159,8 @@ impl<'a> System<'a> for AlchemySystem {
                 } else {
                     acc.push(*effect);
                 }
-                return acc;
+
+                acc
             });
             for effect in effects_first {
                 match effect {
@@ -239,8 +240,7 @@ impl<'a> System<'a> for AlchemySystem {
 
 fn mix_colors(color1: RGB, color2: RGB) -> RGB {
     rltk::RgbLerp::new(color1, color2, 3)
-                  .skip(1)
-                  .next()
+                  .nth(1)
                   .unwrap_or(RGB::named(rltk::GREEN))
 }
 

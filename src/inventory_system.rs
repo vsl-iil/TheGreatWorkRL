@@ -99,7 +99,7 @@ impl<'a> System<'a> for ItemUseSystem {
             }
         }
 
-        let item_harms = harm.get(usable.item).map(|h| *h);
+        let item_harms = harm.get(usable.item).copied();
         match item_harms {
             None => {},
             Some(item_harms) => {
@@ -109,7 +109,7 @@ impl<'a> System<'a> for ItemUseSystem {
             }
         }
 
-        let item_lingers = linger.get(usable.item).map(|h| *h);
+        let item_lingers = linger.get(usable.item).copied();
         match item_lingers {
             None => {},
             Some(item_lingers) => {
@@ -119,7 +119,7 @@ impl<'a> System<'a> for ItemUseSystem {
             }
         }
 
-        let item_explodes = explosion.get(usable.item).map(|h| *h);
+        let item_explodes = explosion.get(usable.item).copied();
         match item_explodes {
             None => {},
             Some(item_explodes) => {
@@ -230,7 +230,7 @@ impl<'a> System<'a> for ItemUseSystem {
             }
         }
 
-        let item_gives_invul = invuln.get(usable.item).map(|i| *i);
+        let item_gives_invul = invuln.get(usable.item).copied();
         match item_gives_invul {
             None => {},
             Some(invul) => {
@@ -245,7 +245,7 @@ impl<'a> System<'a> for ItemUseSystem {
             }
         }
 
-        let item_gives_strength = strength.get(usable.item).map(|i| *i);
+        let item_gives_strength = strength.get(usable.item).copied();
         match item_gives_strength {
             None => {},
             Some(strong) => {

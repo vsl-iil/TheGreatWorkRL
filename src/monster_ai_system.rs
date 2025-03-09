@@ -64,7 +64,7 @@ impl<'a> System<'a> for MonsterAI {
                     if let Some(bomber) = bombers.get(entity) {
                         // kamikadze
                         want_throw.insert(entity, WantsToThrowItem { item: bomber.effect, target: *player_pos }).expect("Unable to kamikadze player");
-                        SufferDamage::new_damage(&mut suffer, entity, std::i32::MAX);
+                        SufferDamage::new_damage(&mut suffer, entity, i32::MAX);
                     } else {
                         want_melee.insert(entity, WantsToMelee { target: *player_entity }).expect("Unable to insert attack on player");
                     }
