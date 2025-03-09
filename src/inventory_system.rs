@@ -14,11 +14,12 @@ impl<'a> System<'a> for InventorySystem {
                         ReadStorage<'a, Name>,
                         WriteStorage<'a, InBackpack>,
                         ReadStorage<'a, MacGuffin>,
+                        WriteExpect<'a, bool>
                         // WriteExpect<'a, Map>
                     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (player_entity, mut log, mut wants_pickup, mut pos, name, mut backpack, boss) = data;
+        let (player_entity, mut log, mut wants_pickup, mut pos, name, mut backpack, boss, mut player_won) = data;
 
         for pickup in wants_pickup.join() {
             pos.remove(pickup.item);
@@ -27,6 +28,7 @@ impl<'a> System<'a> for InventorySystem {
             if pickup.collected_by == *player_entity {
                 if boss.contains(pickup.item) {
                     log.entries.push("You obtained the Philosopher's Stone!".to_owned());
+                    *player_won = true;
                 } else {
                     let mut log_name = "something";
                     if let Some(item_name) = name.get(pickup.item) {

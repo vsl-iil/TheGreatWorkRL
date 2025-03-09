@@ -171,8 +171,8 @@ fn finalboss(ecs: &mut World, x: i32, y: i32) {
         .with(Name { name: "The Cursed Alchemist".to_string() })
         .with(BlocksTile {})
         .with(CombatStats {
-            max_hp: 100,
-            hp: 1,
+            max_hp: 70,
+            hp: 70,
             defence: 2,
             power: 12
         })
@@ -433,7 +433,7 @@ fn harm_potion(ecs: &mut World, x: i32, y: i32) {
         .with(Position {x, y})
         .with(Renderable {
             glyph: rltk::to_cp437('¡'),
-            fg: RGB::named(rltk::DARKRED),
+            fg: RGB::named(rltk::VIOLET_RED),
             bg: RGB::named(rltk::BLACK),
             render_order: 2
         })

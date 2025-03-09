@@ -49,6 +49,10 @@ impl GameState for State {
             newrunstate = *runstate;
         }
 
+        if *self.ecs.fetch::<bool>() {
+            newrunstate = RunState::Win;
+        }
+
         ctx.cls();
 
         match newrunstate {
@@ -228,13 +232,18 @@ impl GameState for State {
                     gui::ItemMenuResult::NoResponse 
                         => {},
                 }
-            }
+            },
             RunState::GameOver
                 => {
                     if gui::gameover(ctx) == gui::ItemMenuResult::Cancel {
                         ::std::process::exit(0);
                     }
+            },
+            RunState::Win => {
+                if gui::winscreen(ctx) == gui::ItemMenuResult::Cancel {
+                    ::std::process::exit(0);
                 }
+            }
         }
 
         newrunstate = damage_system::clean_up_dead(&mut self.ecs, newrunstate);
@@ -386,7 +395,8 @@ pub enum RunState {
     NextLevel,
     ShowThrowItem,
     ShowMix(Option<Entity>),
-    GameOver
+    GameOver,
+    Win
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -469,6 +479,7 @@ fn main() -> rltk::BError {
     gs.ecs.insert(map);
     gs.ecs.insert(gamelog::GameLog { entries: vec!["Welcome to the dungeon of doom!".to_string()] });
     gs.ecs.insert(RunState::MainMenu { menu_selection: gui::MainMenuSelection::NewGame });
+    gs.ecs.insert(false);
 
     rltk::main_loop(context, gs)
 

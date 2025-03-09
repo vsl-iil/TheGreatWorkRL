@@ -241,6 +241,9 @@ pub fn ranged_target(gs: &mut State, ctx: &mut Rltk, range: i32, radius: i32) ->
         }
     }
 
+    if ctx.key.is_some_and(|k| k == VirtualKeyCode::Escape) { 
+        return (ItemMenuResult::Cancel, None); 
+    }
     if valid_target {
         ctx.set_bg(mouse_pos.0, mouse_pos.1, RGB::named(rltk::CYAN));
         if ctx.left_click {
@@ -482,6 +485,24 @@ pub fn mix_potions(gs: &mut State, ctx: &mut Rltk, selected: Option<Entity>) -> 
 pub fn gameover(ctx: &mut Rltk) -> ItemMenuResult {
     ctx.draw_box(35, 20, 10, 3, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
     ctx.print_color_centered(22, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "You died!");
+
+    match ctx.key {
+        None => ItemMenuResult::NoResponse,
+        Some(VirtualKeyCode::Escape | VirtualKeyCode::Return) 
+             => ItemMenuResult::Cancel,
+        Some(_) => ItemMenuResult::NoResponse
+    }
+}
+
+pub fn winscreen(ctx: &mut Rltk) -> ItemMenuResult {
+    ctx.draw_box(15, 20, 50, 11, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK));
+    ctx.print_color_centered(22, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "You found the Philosopher's stone!");
+    ctx.print_color_centered(24, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "You hear the passage to the surface");
+    ctx.print_color_centered(25, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "closing behind you. You begin to wonder");
+    ctx.print_color_centered(26, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "if the fate of the Cursed Alchemist");
+    ctx.print_color_centered(27, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "awaits you as well...");
+    ctx.print_color_centered(29, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), "Thank you for playing!");
+    ctx.print_color_centered(31, RGB::named(rltk::WHITE), RGB::named(rltk::BLACK), "visilii for 7DRL 2025");
 
     match ctx.key {
         None => ItemMenuResult::NoResponse,
