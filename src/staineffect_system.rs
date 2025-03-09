@@ -1,7 +1,7 @@
 use rltk::{Point, RandomNumberGenerator};
 use specs::prelude::*;
 
-use crate::{components::{CombatStats, Explosion, InstantHarm, Invulnerability, LingerType, LingeringEffect, Name, Position, Potion, ProvidesHealing, Puddle, Strength, SufferDamage, Teleport, Viewshed}, gamelog::GameLog, map::Map};
+use crate::{components::{CombatStats, Explosion, InstantHarm, Invulnerability, LingerType, LingeringEffect, Name, Position, ProvidesHealing, Puddle, Strength, SufferDamage, Teleport, Viewshed}, gamelog::GameLog, map::Map, particle_system::ParticleBuilder};
 
 pub struct StainEffect {}
 
@@ -21,7 +21,8 @@ impl<'a> System<'a> for StainEffect {
                         WriteStorage<'a, SufferDamage>,
                         WriteExpect<'a, Point>,
                         ReadExpect<'a, Entity>,
-                        ReadStorage<'a, Potion>,
+                        // ReadStorage<'a, Potion>,
+                        WriteExpect<'a, ParticleBuilder>,
 
                         WriteStorage<'a, ProvidesHealing>,
                         WriteStorage<'a, Teleport>,
@@ -33,7 +34,7 @@ impl<'a> System<'a> for StainEffect {
                       );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut combat, puddle, entities, mut rng, mut map, mut pos, mut viewsheds, mut log, names, mut suffer, mut playerpos, player_entity, potions,   mut heal, mut teleport, mut linger, mut harm, mut explosion, mut invuln, mut strength) = data;
+        let (mut combat, puddle, entities, mut rng, mut map, mut pos, mut viewsheds, mut log, names, mut suffer, mut playerpos, player_entity, mut pbuilder,   mut heal, mut teleport, mut linger, mut harm, mut explosion, mut invuln, mut strength) = data;
 
         for (ents, stat, _puddle) in (&entities, &mut combat, !&puddle).join() {
             // INFLICTS
@@ -62,9 +63,11 @@ impl<'a> System<'a> for StainEffect {
                 SufferDamage::new_damage(&mut suffer, ents, dmg);
 
                 // fire spreads to adjacent mobs
-                if etype == LingerType::Fire {
-                    if let Some(mobpos) = pos.get(ents) {
-                        let Position {x: mobx, y: moby} = mobpos;
+                if let Some(mobpos) = pos.get(ents) {
+                    let Position {x: mobx, y: moby} = mobpos;
+
+                    if etype == LingerType::Fire {
+                        pbuilder.request(*mobx, *moby, rltk::RGB::named(rltk::RED), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('‼'), 200.0);
                         for (x, y) in (-1..=1).flat_map(|x| (-1..=1).map(move |y| (x, y))).filter(|p| !(p.0 == 0 && p.1 == 0)) {
                             for adjent in map.tile_content[map.xy_idx(mobx+x, moby+y)].iter() {
                                 // 50% chance to burn
@@ -78,6 +81,8 @@ impl<'a> System<'a> for StainEffect {
                                 } 
                             }
                         }
+                    } else {
+                        pbuilder.request(*mobx, *moby, rltk::RGB::named(rltk::GREEN), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('‼'), 200.0);
                     }
                 }
 
@@ -91,6 +96,10 @@ impl<'a> System<'a> for StainEffect {
             if let Some(harming) = harm.get(ents) {
                 #[cfg(debug_assertions)]
                 log.entries.push(format!("{} suffers damage!", names.get(ents).map_or("someone", |n| &n.name)));
+                if let Some(mobpos) = pos.get(ents) {
+                    let Position {x: mobx, y: moby} = *mobpos;
+                    pbuilder.request(mobx, moby, rltk::RGB::named(rltk::VIOLETRED), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('!'), 100.0);
+                }
                 SufferDamage::new_damage(&mut suffer, ents, harming.dmg);
 
                 harm.remove(ents);
@@ -104,6 +113,8 @@ impl<'a> System<'a> for StainEffect {
                     blast_tiles.retain(|p| p.x > 0 && p.x < map.width-1 && p.y > 0 && p.y < map.height-1);
 
                     for tile in blast_tiles.iter() {
+                        pbuilder.request(tile.x, tile.y, rltk::RGB::named(rltk::ORANGE), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('░'), 200.0);
+
                         let idx = map.xy_idx(tile.x, tile.y);
                         for mob in map.tile_content[idx].iter() {
                             #[cfg(debug_assertions)]
@@ -115,10 +126,6 @@ impl<'a> System<'a> for StainEffect {
                             ).round().clamp(1.0, 999.0);
                             let dmg = exploding.maxdmg / (2.0f32 * distance) as i32;
                             SufferDamage::new_damage(&mut suffer, *mob, dmg);
-
-                            if potions.contains(*mob) && rng.roll_dice(1, 2) == 1 {
-                                // entities.build_entity().with(c, storage)
-                            }
                         }
                     }
                 }
@@ -165,6 +172,10 @@ impl<'a> System<'a> for StainEffect {
 
             // Invulnerability
             if let Some(invul) = invuln.get_mut(ents) {
+                if let Some(mobpos) = pos.get(ents) {
+                    let Position {x: mobx, y: moby} = *mobpos;
+                    pbuilder.request(mobx, moby, rltk::RGB::named(rltk::GOLD), rltk::RGB::named(rltk::BLACK), rltk::to_cp437('≡'), 200.0);
+                }
                 invul.turns -= 1;
                 if invul.turns < 0 {
                     invuln.remove(ents);

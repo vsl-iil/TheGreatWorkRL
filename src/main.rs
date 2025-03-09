@@ -6,6 +6,7 @@ use inventory_system::{InventorySystem, ItemDropSystem, ItemThrowSystem, ItemUse
 use map_indexing_system::MapIndexingSystem;
 use melee_combat_system::MeleeCombatSystem;
 use monster_ai_system::{BossAI, LobberAI, MonsterAI};
+use particle_system::ParticleSpawnSystem;
 // use rand::RngCore;
 use rltk::{GameState, Point, Rltk};
 use specs::prelude::*;
@@ -31,6 +32,7 @@ mod saveload_system;
 mod staineffect_system;
 mod trap_system;
 mod alchemy_system;
+mod particle_system;
 mod gui;
 mod gamelog;
 mod spawner;
@@ -54,6 +56,7 @@ impl GameState for State {
         }
 
         ctx.cls();
+        particle_system::cull_dead_particles(&mut self.ecs, ctx);
 
         match newrunstate {
             RunState::MainMenu {..} => {},
@@ -235,6 +238,8 @@ impl GameState for State {
             },
             RunState::GameOver
                 => {
+                    self.run_systems();
+                    self.ecs.maintain();
                     if gui::gameover(ctx) == gui::ItemMenuResult::Cancel {
                         ::std::process::exit(0);
                     }
@@ -293,6 +298,9 @@ impl State {
             let mut stain = StainEffect {};
             stain.run_now(&self.ecs);
         }
+
+        let mut particles = ParticleSpawnSystem {};
+        particles.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -445,6 +453,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Agitated>();
     gs.ecs.register::<Teleport>();
     gs.ecs.register::<Weight>();
+    gs.ecs.register::<ParticleLifetime>();
     gs.ecs.register::<Puddle>();
     gs.ecs.register::<Potion>();
     gs.ecs.register::<LingeringEffect>();
@@ -467,6 +476,8 @@ fn main() -> rltk::BError {
     let mut rng = rltk::RandomNumberGenerator::new();
     gs.ecs.insert(AlchemySeed(rng.next_u64()));
     gs.ecs.insert(rng);
+
+    gs.ecs.insert(particle_system::ParticleBuilder::new());
 
     gs.ecs.insert(Point::new(player_x, player_y));
     let player_entity = spawner::player(&mut gs.ecs, player_x, player_y);

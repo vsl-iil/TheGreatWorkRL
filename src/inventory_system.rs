@@ -1,7 +1,7 @@
 use rltk::{Point, RandomNumberGenerator, RGB};
 use specs::prelude::*;
 
-use crate::{components::{Agitated, AreaOfEffect, CombatStats, Confusion, Consumable, Explosion, InBackpack, InflictsDamage, InstantHarm, Invulnerability, LingeringEffect, MacGuffin, Name, Position, Potion, ProvidesHealing, Puddle, Renderable, Strength, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem, Weight}, gamelog::GameLog, map::Map};
+use crate::{components::{Agitated, AreaOfEffect, CombatStats, Confusion, Consumable, Explosion, InBackpack, InflictsDamage, InstantHarm, Invulnerability, LingeringEffect, MacGuffin, Name, Position, Potion, ProvidesHealing, Puddle, Renderable, Strength, SufferDamage, Teleport, Viewshed, WantsToDropItem, WantsToPickupItem, WantsToThrowItem, WantsToUseItem, Weight}, gamelog::GameLog, map::Map, particle_system::ParticleBuilder};
 
 pub struct InventorySystem {}
 
@@ -68,11 +68,12 @@ impl<'a> System<'a> for ItemUseSystem {
                         ReadStorage<'a, Consumable>,
                         WriteStorage<'a, CombatStats>,
                         WriteExpect<'a, RandomNumberGenerator>,
-                        WriteExpect<'a, Map>
+                        WriteExpect<'a, Map>,
+                        WriteExpect<'a, ParticleBuilder>
                     );
 
  fn run(&mut self, data: Self::SystemData) {
-    let (player_entity, mut gamelog, entities, mut want_use, names, mut viewsheds, healing, damaging, mut confusion, teleport, mut harm, mut linger, mut explosion, mut invuln, mut strength, mut playerpos, aoe, mut suffering, consumables, mut combat_stats, mut rng, mut map) = data;
+    let (player_entity, mut gamelog, entities, mut want_use, names, mut viewsheds, healing, damaging, mut confusion, teleport, mut harm, mut linger, mut explosion, mut invuln, mut strength, mut playerpos, aoe, mut suffering, consumables, mut combat_stats, mut rng, mut map, mut pbuilder) = data;
 
     for (entity, usable) in (&entities, &want_use).join() {
         let mut targets = vec![];
@@ -140,6 +141,9 @@ impl<'a> System<'a> for ItemUseSystem {
                     let stats = combat_stats.get_mut(*target);
                     if let Some(stats) = stats {
                         stats.hp = i32::min(stats.max_hp, stats.hp + healer.heal_amount*3);
+                        if let Some(pos) = playerpos.get(entity) {
+                            pbuilder.request(pos.x, pos.y, RGB::named(rltk::RED), RGB::named(rltk::BLACK), rltk::to_cp437('♥'), 200.0);
+                        }
                         if entity == *player_entity {
                             gamelog.entries.push(format!("You used the {}, healing {} hp.", names.get(usable.item).unwrap().name, healer.heal_amount*3));
                         }
@@ -177,6 +181,9 @@ impl<'a> System<'a> for ItemUseSystem {
             Some(confuse) => {
                 for mob in targets.iter() {
                     add_confusion.push((*mob, confuse.turns));
+                    if let Some(pos) = playerpos.get(entity) {
+                        pbuilder.request(pos.x, pos.y, RGB::named(rltk::PINK), RGB::named(rltk::BLACK), rltk::to_cp437('?'), 200.0);
+                    }
                     if entity == *player_entity {
                         let mut mob_name = "someone";
                         if let Some(mname) = names.get(*mob) {
@@ -213,6 +220,7 @@ impl<'a> System<'a> for ItemUseSystem {
                     player_pos.x = x;
                     player_pos.y = y;
                 }
+
 
                 viewsheds.get_mut(*player_entity).unwrap().dirty = true;
                 let idx = map.xy_idx(x, y);
@@ -338,11 +346,12 @@ impl<'a> System<'a> for ItemThrowSystem {
                         ReadStorage<'a, Potion>,
                         WriteStorage<'a, Renderable>,
                         WriteStorage<'a, Puddle>,
-                        WriteExpect<'a, RandomNumberGenerator>
+                        WriteExpect<'a, RandomNumberGenerator>,
+                        WriteExpect<'a, ParticleBuilder>
                     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, mut intentthrow, map, mut backpack, mut pos, mut suffer, weight, mut agitate,   mut healing, mut teleport, mut linger, mut harm, mut explosion, mut confusion, mut invuln, mut strength, potions, mut render, mut puddle, mut rng) = data;
+        let (entities, mut intentthrow, map, mut backpack, mut pos, mut suffer, weight, mut agitate,   mut healing, mut teleport, mut linger, mut harm, mut explosion, mut confusion, mut invuln, mut strength, potions, mut render, mut puddle, mut rng, mut pbuilder) = data;
 
         for to_throw in (&mut intentthrow).join() {
             let Point {x, y} = to_throw.target;
@@ -454,6 +463,9 @@ impl<'a> System<'a> for ItemThrowSystem {
             }
 
             for mob in map.tile_content[map.xy_idx(x, y)].iter() {
+                if !agitate.contains(*mob) {
+                    pbuilder.request(x, y, RGB::named(rltk::YELLOW), RGB::named(rltk::BLACK), rltk::to_cp437('!'), 200.0);
+                }
                 // Эй, кто в меня кинул?!
                 agitate.insert(*mob, Agitated { turns: 2 }).expect("Unable to agitate enemy after throw.");
             }

@@ -229,6 +229,11 @@ pub struct Agitated {
 #[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct Weight(pub i32);
 
+#[derive(Component, Serialize, Deserialize, Clone)]
+pub struct ParticleLifetime {
+    pub lifetime_ms: f32
+}
+
 pub struct SerializeMe;
 
 #[derive(Component, Serialize, Deserialize, Clone)]
