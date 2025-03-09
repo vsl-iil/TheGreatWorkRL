@@ -24,9 +24,7 @@ impl<'a> System<'a> for DamageSystem {
         }
 
         for (e, _potion, damage, pos) in (&entities, &potions, &damage, &pos).join() {
-            dbg!("potion");
             if damage.amount.iter().sum::<i32>() >= 1 {
-                dbg!("shatter");
                 intentthrow.insert(e, WantsToThrowItem { item: e, target: Point {x: pos.x, y: pos.y } }).expect("Unable to shatter potion");
             }
         }
